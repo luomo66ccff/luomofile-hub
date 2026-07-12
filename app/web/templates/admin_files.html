@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Files - LuomoFile Hub{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">Admin</p>
+    <h1>Files</h1>
+    <p>{{ total }} file(s){%
+      if q or type or visibility or size or time %}<a href="/admin/files" class="btn ghost" style="display:inline;padding:4px 10px;margin-left:8px;font-size:13px;border-radius:999px;">Reset</a>{% endif %}</p>
+  </div>
+  <a class="btn primary" href="/upload">Upload</a>
+</section>
+
+<section class="panel" style="padding:16px 18px;margin-bottom:18px;">
+  <div style="display:grid;gap:12px;">
+    <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end;">
+      <input type="search" name="q" placeholder="Search filename, notes, object key..." value="{{ q }}" aria-label="Search files" form="filter-form">
+      <button type="submit" class="btn primary" style="white-space:nowrap;" form="filter-form">Filter</button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end;">
+      <label style="flex:1;min-width:130px;">
+        <small style="color:var(--text-muted);font-weight:700;display:block;margin-bottom:4px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Type</small>
+        <select name="type" onchange="this.form.submit()" form="filter-form">
+          <option value="">All types</option>
+          <option value="image"{{ ' selected' if type=='image' }}>Image</option>
+          <option value="document"{{ ' selected' if type=='document' }}>Document</option>
+          <option value="archive"{{ ' selected' if type=='archive' }}>Archive</option>
+          <option value="audio"{{ ' selected' if type=='audio' }}>Audio</option>
+          <option value="video"{{ ' selected' if type=='video' }}>Video</option>
+          <option value="code"{{ ' selected' if type=='code' }}>Code</option>
+          <option value="other"{{ ' selected' if type=='other' }}>Other</option>
+        </select>
+      </label>
+      <label style="flex:1;min-width:130px;">
+        <small style="color:var(--text-muted);font-weight:700;display:block;margin-bottom:4px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Visibility</small>
+        <select name="visibility" onchange="this.form.submit()" form="filter-form">
+          <option value="">All</option>
+          <option value="public"{{ ' selected' if visibility=='public' }}>Public</option>
+          <option value="unlisted"{{ ' selected' if visibility=='unlisted' }}>Unlisted</option>
+          <option value="private"{{ ' selected' if visibility=='private' }}>Private</option>
+        </select>
+      </label>
+      <label style="flex:1;min-width:130px;">
+        <small style="color:var(--text-muted);font-weight:700;display:block;margin-bottom:4px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Time</small>
+        <select name="time" onchange="this.form.submit()" form="filter-form">
+          <option value="">All time</option>
+          <option value="today"{{ ' selected' if time=='today' }}>Today</option>
+          <option value="7d"{{ ' selected' if time=='7d' }}>Last 7 days</option>
+          <option value="30d"{{ ' selected' if time=='30d' }}>Last 30 days</option>
+        </select>
+      </label>
+      <label style="flex:1;min-width:130px;">
+        <small style="color:var(--text-muted);font-weight:700;display:block;margin-bottom:4px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Size</small>
+        <select name="size" onchange="this.form.submit()" form="filter-form">
+          <option value="">Any size</option>
+          <option value="small"{{ ' selected' if size=='small' }}>&lt; 1 MB</option>
+          <option value="medium"{{ ' selected' if size=='medium' }}>1 - 10 MB</option>
+          <option value="large"{{ ' selected' if size=='large' }}>&gt; 10 MB</option>
+        </select>
+      </label>
+      <label style="flex:1;min-width:130px;">
+        <small style="color:var(--text-muted);font-weight:700;display:block;margin-bottom:4px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Sort</small>
+        <select name="sort" onchange="this.form.submit()" form="filter-form">
+          <option value="created_desc"{{ ' selected' if sort=='created_desc' }}>Newest first</option>
+          <option value="created_asc"{{ ' selected' if sort=='created_asc' }}>Oldest first</option>
+          <option value="size_desc"{{ ' selected' if sort=='size_desc' }}>Largest first</option>
+          <option value="size_asc"{{ ' selected' if sort=='size_asc' }}>Smallest first</option>
+          <option value="name_asc"{{ ' selected' if sort=='name_asc' }}>Name A-Z</option>
+        </select>
+      </label>
+    </div>
+    <form id="filter-form" method="get" action="/admin/files" style="display:none;" aria-hidden="true"></form>
+  </div>
+</section>
+
+<section class="panel table" style="padding:0 18px;">
+  <div class="file-row table-head">
+    <span>Name</span><span>Size</span><span>Type</span><span>Visibility</span><span>Owner</span><span>Uploaded</span><span>Link</span><span>Actions</span>
+  </div>
+  {% for f in files %}
+  {% set backend_name = 'cos_tky' if f.storage_backend == 'cos' else f.storage_backend %}
+  <div class="file-row">
+    <a href="/admin/files/{{ f.file_id }}" title="{{ f.file_id }}"><strong>{{ f.original_filename }}</strong></a>
+    <span>{% if f.size_bytes < 1024 %}{{ f.size_bytes }} B{% elif f.size_bytes < 1048576 %}{{ '%.1f'|format(f.size_bytes / 1024) }} KB{% elif f.size_bytes < 1073741824 %}{{ '%.1f'|format(f.size_bytes / 1048576) }} MB{% else %}{{ '%.2f'|format(f.size_bytes / 1073741824) }} GB{% endif %}</span>
+    <span class="muted" style="font-size:12px;">{{ (f.mime_type or '?').split('/')[-1] }}</span>
+    <span class="badge {{ 'ok' if f.visibility == 'public' else 'danger' if f.visibility == 'private' else 'muted' }}">{{ f.visibility }}</span>
+    <span class="muted" style="font-size:12px;">{{ f.owner_username or '--' }}</span>
+    <span class="muted" style="font-size:12px;white-space:nowrap;">{{ (f.uploaded_at or '')[:10] }}</span>
+    <span class="badge {{ 'ok' if f.link_enabled else 'muted' }}">{{ 'direct' if f.link_enabled else 'private' }}</span>
+    <div style="display:flex;flex-wrap:nowrap;gap:4px;">
+      {% if f.link_enabled and f.public_url %}
+      <button class="btn ghost" type="button" data-copy="{{ f.public_url }}" title="Copy link" style="min-height:28px;padding:4px 8px;font-size:12px;">Link</button>
+      {% endif %}
+      <form method="post" action="/admin/files/{{ f.file_id }}/delete" onsubmit="return confirm('Delete {{ f.original_filename|e }}?')" style="display:inline;">
+        <button class="btn ghost" style="min-height:28px;padding:4px 8px;font-size:12px;color:var(--danger);">Delete</button>
+      </form>
+    </div>
+  </div>
+  {% else %}
+  <div style="padding:40px;text-align:center;">
+    <div style="width:70px;height:70px;border-radius:26px;display:grid;place-items:center;margin:0 auto 16px;background:linear-gradient(135deg,rgba(34,211,238,.22),rgba(244,114,182,.18));color:var(--anime-yellow);font-size:28px;">📁</div>
+    <strong>No files found</strong>
+    <p class="muted">Try adjusting your filters or upload a new file.</p>
+  </div>
+  {% endfor %}
+</section>
+
+{% if total > page_size %}
+<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:18px;">
+  {% if page > 1 %}
+  <a class="btn" href="/admin/files?{{ query_string }}&page={{ page - 1 }}" style="font-size:13px;">← Previous</a>
+  {% endif %}
+  <span class="muted" style="font-size:13px;">Page {{ page }} of {{ total_pages }}</span>
+  {% if page < total_pages %}
+  <a class="btn" href="/admin/files?{{ query_string }}&page={{ page + 1 }}" style="font-size:13px;">Next →</a>
+  {% endif %}
+</div>
+{% endif %}
+
+<script>
+(function() {
+  document.querySelectorAll('[data-copy]').forEach(function(btn) {
+    btn.addEventListener('click', async function() {
+      var url = this.getAttribute('data-copy');
+      try { await navigator.clipboard.writeText(url); } catch(e) {}
+      var orig = this.textContent;
+      this.textContent = 'Copied!';
+      var self = this;
+      setTimeout(function() { self.textContent = orig; }, 1500);
+    });
+  });
+})();
+</script>
+{% endblock %}

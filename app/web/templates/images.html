@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Images - LuomoFile Hub{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div><p class="eyebrow">Image hosting</p><h1>Images</h1></div>
+  {% if user and user.status == 'active' %}
+  <a class="btn primary" href="/upload?purpose=image">Upload Image</a>
+  {% elif user %}
+  <a class="btn secondary" href="/upload">Verify email</a>
+  {% else %}
+  <a class="btn primary" href="/upload">Sign in to upload</a>
+  {% endif %}
+</section>
+<section class="image-grid">
+  {% for f in files %}
+  <article class="image-card">
+    <a href="/images/{{ f.file_id }}"><img src="/i/{{ f.file_id }}" alt="{{ f.original_filename }}"></a>
+    <strong><a href="/images/{{ f.file_id }}">{{ f.original_filename }}</a></strong>
+    <span class="muted">{{ f.size_bytes }} bytes · {{ f.uploaded_at }}</span>
+    <span class="badge {{ 'ok' if f.link_enabled else 'muted' }}">{{ 'Public direct link' if f.link_enabled else 'No public link' }}</span>
+    {% if f.link_enabled and f.public_url %}
+    <code id="image-link-{{ f.file_id }}">{{ f.public_url }}</code>
+    <div class="actions">
+      <button class="btn secondary" type="button" data-copy-target="image-link-{{ f.file_id }}">Copy direct link</button>
+      <form method="post" action="/files/{{ f.file_id }}/link/revoke"><button class="btn danger">Revoke</button></form>
+    </div>
+    {% else %}
+    <p class="muted">Private / No public link</p>
+    <form method="post" action="/files/{{ f.file_id }}/link/generate"><button class="btn secondary">Generate</button></form>
+    {% endif %}
+  </article>
+  {% else %}<div class="empty">No public images.</div>{% endfor %}
+</section>
+<script>
+document.querySelectorAll("[data-copy-target]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const target = document.getElementById(button.dataset.copyTarget);
+    if (!target) return;
+    await navigator.clipboard.writeText(target.textContent.trim());
+    button.textContent = "Copied";
+  });
+});
+</script>
+{% endblock %}

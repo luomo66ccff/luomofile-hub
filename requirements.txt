@@ -1,0 +1,7 @@
+fastapi==0.139.0
+uvicorn[standard]==0.51.0
+Jinja2==3.1.6
+python-multipart==0.0.32
+python-dotenv==1.2.2
+boto3==1.35.90
+httpx==0.28.1

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Register - LuomoFile Hub{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">Account</p>
+    <h1>Register</h1>
+    <p>Create an account, verify your email, and start using LuomoFile Hub immediately.</p>
+  </div>
+</section>
+<section class="login-card">
+  {% if error %}<div class="upload-message error">{{ error }}</div>{% endif %}
+  {% if message %}<div class="upload-message success">{{ message }}</div>{% endif %}
+  <form method="post" action="/register">
+    <label>Username<input name="username" autocomplete="username" required minlength="3" maxlength="32" pattern="[A-Za-z0-9_.-]+"></label>
+    <label>Email<input type="email" name="email" autocomplete="email" required></label>
+    <label>Password<input type="password" name="password" autocomplete="new-password" required minlength="8"></label>
+    <button class="btn primary" type="submit">Send verification email</button>
+  </form>
+  <p class="muted">After email verification, your account becomes active automatically.</p>
+  <div class="actions">
+    <a class="btn ghost" href="/login">Already have an account?</a>
+  </div>
+</section>
+{% endblock %}

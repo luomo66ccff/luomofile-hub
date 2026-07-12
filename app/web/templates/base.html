@@ -1,0 +1,40 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#071211">
+  <title>{% block title %}LuomoFile Hub{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css?v=20260711-3">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  {% set path = request.url.path %}
+  <header class="topbar">
+    <a class="brand" href="/"><span class="mark">LF</span><span><strong>LuomoFile Hub</strong><small>Private files / Images / Temp Share</small></span></a>
+    <nav>
+      <a class="{{ 'active' if path == '/' else '' }}" href="/">Home</a>
+      {% if user and user.status == 'active' %}
+      <a class="{{ 'active' if path.startswith('/upload') else '' }}" href="/upload">Upload</a>
+      <a class="{{ 'active' if path.startswith('/temp') else '' }}" href="/temp">Temp</a>
+      <a class="{{ 'active' if path.startswith('/images') else '' }}" href="/images">Images</a>
+      <a class="{{ 'active' if path.startswith('/files') else '' }}" href="/files">Files</a>
+      <a class="{{ 'active' if path.startswith('/developer') else '' }}" href="/developer">Developer</a>
+      {% if user.role == 'admin' %}<a class="{{ 'active' if path.startswith('/admin') else '' }}" href="/admin">Admin</a>{% endif %}
+      {% elif user %}
+      <a class="{{ 'active' if path == '/' else '' }}" href="/">Account Status</a>
+      {% endif %}
+    </nav>
+    <div class="userbar">
+      {% if user %}<span class="chip">{{ user.username }}</span><form method="post" action="/logout"><button class="btn ghost">Logout</button></form>{% else %}<a class="btn ghost" href="/login">Login</a><a class="btn secondary" href="/register">Register</a>{% endif %}
+    </div>
+  </header>
+  <main class="shell">{% block content %}{% endblock %}</main>
+  <footer class="footer">
+    <span>LuomoFile Hub</span>
+    <span>Private by default</span>
+    <a href="/developer/docs">API documentation</a>
+  </footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

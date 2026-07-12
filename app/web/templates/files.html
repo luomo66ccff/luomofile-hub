@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Files - LuomoFile Hub{% endblock %}
+{% macro human_size(n) -%}
+  {%- set n = n or 0 -%}
+  {%- if n < 1024 -%}{{ n }} B
+  {%- elif n < 1048576 -%}{{ '%.1f'|format(n / 1024) }} KB
+  {%- elif n < 1073741824 -%}{{ '%.1f'|format(n / 1048576) }} MB
+  {%- else -%}{{ '%.1f'|format(n / 1073741824) }} GB
+  {%- endif -%}
+{%- endmacro %}
+{% macro backend_label(v) -%}
+  {{- 'cos_tky' if v == 'cos' else v -}}
+{%- endmacro %}
+{% block content %}
+<section class="page-head">
+  <div><p class="eyebrow">Files</p><h1>File Library</h1><p>{{ total }} file{{ '' if total == 1 else 's' }} found.</p></div>
+  <div class="actions">
+    <a class="btn primary" href="/upload">Upload</a>
+    {% if user.role == 'admin' %}<a class="btn danger" href="/files/cleanup/test-files">Clean test files</a>{% endif %}
+  </div>
+</section>
+<section class="panel compact-filter">
+  <form method="get" action="/files">
+    <div class="filter-main">
+      <label>Search<input name="q" value="{{ filters.q }}" placeholder="filename or tag"></label>
+      <button class="btn secondary">Apply filters</button>
+    </div>
+    <details>
+      <summary>Advanced filters</summary>
+      <div class="form-grid">
+        {% if user.role == 'admin' %}<label>Scope<select name="scope"><option value="my" {{ 'selected' if filters.scope != 'all' else '' }}>My files</option><option value="all" {{ 'selected' if filters.scope == 'all' else '' }}>All files</option></select></label>{% endif %}
+        <label>Purpose<select name="purpose"><option value="">All</option>{% for v in ['image','temp','api','backup','other'] %}<option value="{{ v }}" {{ 'selected' if filters.purpose == v else '' }}>{{ v }}</option>{% endfor %}</select></label>
+        <label>Visibility<select name="visibility"><option value="">All</option>{% for v in ['public','unlisted','private'] %}<option value="{{ v }}" {{ 'selected' if filters.visibility == v else '' }}>{{ v }}</option>{% endfor %}</select></label>
+        <label>Status<select name="status"><option value="active" {{ 'selected' if filters.status == 'active' else '' }}>active</option><option value="expired" {{ 'selected' if filters.status == 'expired' else '' }}>expired</option><option value="deleted" {{ 'selected' if filters.status == 'deleted' else '' }}>deleted</option><option value="disabled" {{ 'selected' if filters.status == 'disabled' else '' }}>disabled</option><option value="all" {{ 'selected' if filters.status == 'all' else '' }}>all</option></select></label>
+        <label>Backend<select name="storage_backend"><option value="">All</option>{% for v in ['r2','cos','local_temp'] %}<option value="{{ v }}" {{ 'selected' if filters.storage_backend == v else '' }}>{{ backend_label(v) }}</option>{% endfor %}</select></label>
+        <label>Link<select name="link_enabled"><option value="">All</option><option value="1" {{ 'selected' if filters.link_enabled == '1' else '' }}>Public link</option><option value="0" {{ 'selected' if filters.link_enabled == '0' else '' }}>No public link</option></select></label>
+        <label>Sort<select name="sort">{% for v in ['uploaded_at','size_bytes','access_count','original_filename'] %}<option value="{{ v }}" {{ 'selected' if filters.sort == v else '' }}>{{ v }}</option>{% endfor %}</select></label>
+        <label>Order<select name="order"><option value="desc" {{ 'selected' if filters.order == 'desc' else '' }}>desc</option><option value="asc" {{ 'selected' if filters.order == 'asc' else '' }}>asc</option></select></label>
+        <label>Page size<select name="page_size">{% for v in [20,50,100] %}<option value="{{ v }}" {{ 'selected' if filters.page_size == v else '' }}>{{ v }}</option>{% endfor %}</select></label>
+      </div>
+    </details>
+  </form>
+</section>
+<form method="post" id="files-bulk-form">
+<section class="panel table file-table">
+  <div class="file-row table-head">
+    <label class="select-cell"><input type="checkbox" id="select-all-page" title="Select all on page"></label>
+    <strong>Name</strong><strong>Size</strong><strong>Purpose</strong><strong>Visibility</strong><strong>Link</strong><strong>Uploaded</strong><strong>Actions</strong>
+  </div>
+  {% for f in files %}
+  <div class="file-row">
+    <label class="select-cell"><input type="checkbox" name="file_ids" value="{{ f.file_id }}" aria-label="Select file"></label>
+    <a href="/files/{{ f.file_id }}">{{ f.original_filename }}</a>
+    <span>{{ human_size(f.size_bytes) }}</span>
+    <span>{{ f.purpose }}</span>
+    <span>{{ f.visibility }}</span>
+    <span class="badge {{ 'ok' if f.link_enabled else 'muted' }}">{{ 'Public link' if f.link_enabled else 'No public link' }}</span>
+    <span>{{ f.uploaded_at }}</span>
+    <span class="actions row-actions">
+      <a class="btn ghost" href="/files/{{ f.file_id }}">Detail</a>
+      {% if f.link_enabled and f.public_url %}<button class="btn secondary" type="button" data-copy-value="{{ f.public_url }}">Copy link</button><button class="btn danger" type="submit" formmethod="post" formaction="/files/{{ f.file_id }}/link/revoke">Revoke link</button>{% elif f.status == 'active' %}<button class="btn secondary" type="submit" formmethod="post" formaction="/files/{{ f.file_id }}/link/generate">Generate link</button>{% endif %}
+      <button class="btn danger" type="submit" formmethod="post" formaction="/files/{{ f.file_id }}/delete">Delete</button>
+    </span>
+  </div>
+  {% else %}<p class="muted">No files match the current filters.</p>{% endfor %}
+</section>
+<section class="bulkbar">
+  <button class="btn danger" type="submit" formaction="/files/bulk/delete">Delete selected</button>
+  <button class="btn secondary" type="submit" formaction="/files/bulk/revoke-links">Revoke links selected</button>
+</section>
+</form>
+<section class="pagination">
+  {% set qs = 'q=' ~ filters.q ~ '&purpose=' ~ filters.purpose ~ '&visibility=' ~ filters.visibility ~ '&status=' ~ filters.status ~ '&storage_backend=' ~ filters.storage_backend ~ '&link_enabled=' ~ filters.link_enabled ~ '&sort=' ~ filters.sort ~ '&order=' ~ filters.order ~ '&scope=' ~ filters.scope ~ '&page_size=' ~ filters.page_size %}
+  {% if has_prev %}<a class="btn secondary" href="/files?{{ qs }}&page={{ page - 1 }}">Previous</a>{% else %}<span class="btn ghost muted">Previous</span>{% endif %}
+  <span class="chip">Page {{ page }}</span>
+  {% if has_next %}<a class="btn secondary" href="/files?{{ qs }}&page={{ page + 1 }}">Next</a>{% else %}<span class="btn ghost muted">Next</span>{% endif %}
+</section>
+<script>
+const selectAll = document.getElementById("select-all-page");
+if (selectAll) selectAll.addEventListener("change", () => {
+  document.querySelectorAll('input[name="file_ids"]').forEach((box) => { box.checked = selectAll.checked; });
+});
+document.querySelectorAll("[data-copy-value]").forEach((button) => button.addEventListener("click", async () => {
+  await navigator.clipboard.writeText(button.dataset.copyValue);
+  button.textContent = "Copied";
+}));
+</script>
+{% endblock %}

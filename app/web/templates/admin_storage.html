@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Storage - LuomoFile Hub{% endblock %}
+{% block content %}
+<section class="page-head"><div><p class="eyebrow">Admin</p><h1>Storage Status</h1><p>Backend capacity and operational state. Secrets and internal paths are not shown.</p></div></section>
+<section class="grid three">
+  {% for b in backends %}
+  {% set used = b.used_bytes_cache or 0 %}
+  {% set maxb = b.max_capacity_bytes or 0 %}
+  {% set backend_name = 'cos_tky' if b.name == 'cos' else b.name %}
+  {% set backend_type = 'cos_tky' if b.name == 'cos' else 'cos_sv' if b.name == 'cos_sv' else b.type %}
+  {% set pct = ((used * 100 / maxb) if maxb else 0) %}
+  {% set level = 'critical' if pct >= 95 else 'degraded' if pct >= 90 else 'warning' if pct >= 80 else 'operational' %}
+  <article class="panel">
+    <h2>{{ backend_name }}</h2>
+    <p class="muted">{{ backend_type }}</p>
+    <div class="status-list">
+      <div><span>Status</span><span class="badge {{ 'ok' if b.enabled and level == 'operational' else 'muted' }}">{{ level if b.enabled else 'disabled' }}</span></div>
+      <div><span>Used</span><strong>{{ used }}</strong></div>
+      <div><span>Max</span><strong>{{ maxb }}</strong></div>
+      <div><span>Usage</span><strong>{{ '%.1f'|format(pct) }}%</strong></div>
+      <div><span>Updated</span><span>{{ b.updated_at }}</span></div>
+    </div>
+  </article>
+  {% endfor %}
+</section>
+{% endblock %}

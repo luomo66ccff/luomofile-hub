@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ file.original_filename }} - LuomoFile Hub{% endblock %}
+{% block content %}
+<section class="page-head"><div><p class="eyebrow">Image detail</p><h1>{{ file.original_filename }}</h1></div><a class="btn secondary" href="/images">Back to images</a></section>
+<section class="grid two">
+  <article class="panel image-card"><img src="/i/{{ file.file_id }}" alt="{{ file.original_filename }}"></article>
+  <article class="panel">
+    <dl class="kv">
+      <div><dt>Size</dt><dd>{{ file.size_bytes }}</dd></div>
+      <div><dt>Uploaded</dt><dd>{{ file.uploaded_at }}</dd></div>
+      <div><dt>Status</dt><dd><span class="badge {{ 'ok' if file.link_enabled else 'muted' }}">{{ 'Public link enabled' if file.link_enabled else 'No public link' }}</span></dd></div>
+      <div><dt>Direct URL</dt><dd>{% if file.link_enabled and file.public_url %}<code id="direct-url">{{ file.public_url }}</code>{% else %}<span class="muted">Generate a direct link to enable copy formats.</span>{% endif %}</dd></div>
+    </dl>
+    <div class="actions">
+      {% if file.link_enabled and file.public_url %}
+      <button class="btn secondary" data-copy-target="direct-url">Copy URL</button>
+      <button class="btn secondary" data-copy-value="![image]({{ file.public_url }})">Copy Markdown</button>
+      <button class="btn secondary" data-copy-value='&lt;img src="{{ file.public_url }}" alt="image"&gt;'>Copy HTML</button>
+      <button class="btn secondary" data-copy-value="[img]{{ file.public_url }}[/img]">Copy BBCode</button>
+      <form method="post" action="/files/{{ file.file_id }}/link/revoke"><button class="btn danger">Revoke</button></form>
+      {% else %}
+      <form method="post" action="/files/{{ file.file_id }}/link/generate"><button class="btn secondary">Generate link</button></form>
+      {% endif %}
+      <a class="btn ghost" href="/files/{{ file.file_id }}">File detail</a>
+    </div>
+  </article>
+</section>
+<script>
+document.querySelectorAll("[data-copy-target],[data-copy-value]").forEach((button) => button.addEventListener("click", async () => {
+  let text = button.dataset.copyValue || "";
+  if (!text) {
+    const target = document.getElementById(button.dataset.copyTarget);
+    text = target ? target.textContent.trim() : "";
+  }
+  if (!text) return;
+  await navigator.clipboard.writeText(text);
+  button.textContent = "Copied";
+}));
+</script>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}API Docs - LuomoFile Hub{% endblock %}
+{% block content %}
+<section class="page-head"><div><p class="eyebrow">API</p><h1>Developer Docs</h1><p>All examples use scoped API keys. Keep keys secret.</p></div></section>
+<section class="grid two">
+  <article class="panel"><h2>Upload file</h2><pre>curl -H "Authorization: Bearer lfk_xxx" \
+  -F "file=@example.png" \
+  -F "purpose=image" \
+  -F "generate_link=false" \
+  {{ base_url }}/api/v1/files/upload</pre></article>
+  <article class="panel"><h2>List files</h2><pre>curl -H "Authorization: Bearer lfk_xxx" \
+  {{ base_url }}/api/v1/files</pre></article>
+  <article class="panel"><h2>Get file detail</h2><pre>curl -H "Authorization: Bearer lfk_xxx" \
+  {{ base_url }}/api/v1/files/lf_xxx</pre></article>
+  <article class="panel"><h2>Generate direct link</h2><pre>curl -X POST -H "Authorization: Bearer lfk_xxx" \
+  {{ base_url }}/api/v1/files/lf_xxx/link/generate</pre></article>
+  <article class="panel"><h2>Revoke direct link</h2><pre>curl -X POST -H "Authorization: Bearer lfk_xxx" \
+  {{ base_url }}/api/v1/files/lf_xxx/link/revoke</pre></article>
+  <article class="panel"><h2>Delete file</h2><pre>curl -X DELETE -H "Authorization: Bearer lfk_xxx" \
+  {{ base_url }}/api/v1/files/lf_xxx</pre></article>
+  <article class="panel"><h2>Storage stats</h2><pre>curl -H "Authorization: Bearer lfk_xxx" \
+  {{ base_url }}/api/v1/storage/stats</pre></article>
+</section>
+{% endblock %}

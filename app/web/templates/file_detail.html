@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ file.original_filename }} - LuomoFile Hub{% endblock %}
+{% block content %}
+{% set backend_name = 'cos_tky' if file.storage_backend == 'cos' else file.storage_backend %}
+<section class="page-head"><div><p class="eyebrow">File detail</p><h1>{{ file.original_filename }}</h1></div><a class="btn secondary" href="/files">Back to files</a></section>
+<section class="panel">
+  <dl class="kv">
+    <div><dt>ID</dt><dd>{{ file.file_id }}</dd></div>
+    <div><dt>Size</dt><dd>{{ file.size_bytes }}</dd></div>
+    <div><dt>MIME</dt><dd>{{ file.mime_type }}</dd></div>
+    <div><dt>Uploaded</dt><dd>{{ file.uploaded_at }}</dd></div>
+    <div><dt>Updated</dt><dd>{{ file.updated_at }}</dd></div>
+    <div><dt>Expires</dt><dd>{{ file.expires_at or 'Never' }}</dd></div>
+    <div><dt>Backend</dt><dd>{{ backend_name }}</dd></div>
+    <div><dt>Visibility</dt><dd>{{ file.visibility }}</dd></div>
+    <div><dt>Purpose</dt><dd>{{ file.purpose }}</dd></div>
+    <div><dt>Status</dt><dd>{{ file.status }}</dd></div>
+    <div><dt>SHA256</dt><dd><code>{{ file.sha256[:12] }}</code></dd></div>
+    <div><dt>Direct link</dt><dd>{% if file.link_enabled and file.public_url %}<a id="direct-link" href="{{ file.public_url }}">{{ file.public_url }}</a>{% else %}<span class="muted">Private / No public link</span>{% endif %}</dd></div>
+    <div><dt>Accesses</dt><dd>{{ file.access_count }}</dd></div>
+    <div><dt>Last accessed</dt><dd>{{ file.last_accessed_at or 'Never' }}</dd></div>
+    <div><dt>Tags</dt><dd>{{ file.tags or 'No tags' }}</dd></div>
+  </dl>
+  <div class="actions">
+    {% if file.link_enabled and file.public_url %}
+    <button class="btn secondary" type="button" data-copy-target="direct-link">Copy direct link</button>
+    <form method="post" action="/files/{{ file.file_id }}/link/revoke"><button class="btn danger">Revoke direct link</button></form>
+    {% else %}
+    <form method="post" action="/files/{{ file.file_id }}/link/generate"><button class="btn secondary">Generate direct link</button></form>
+    {% endif %}
+  </div>
+  <form class="form-grid" method="post" action="/files/{{ file.file_id }}/tags">
+    <label class="full">Tags<input name="tags" value="{{ file.tags or '' }}" placeholder="project,image,temp"></label>
+    <button class="btn secondary full">Save tags</button>
+  </form>
+  <form method="post" action="/files/{{ file.file_id }}/delete"><button class="btn danger">Delete file</button></form>
+</section>
+<script>
+document.querySelectorAll("[data-copy-target]").forEach((button) => button.addEventListener("click", async () => {
+  const target = document.getElementById(button.dataset.copyTarget);
+  if (!target) return;
+  await navigator.clipboard.writeText(target.textContent.trim());
+  button.textContent = "Copied";
+}));
+</script>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}LuomoFile Hub{% endblock %}
+{% block content %}
+{% if not user %}
+<section class="product-hero">
+  <div class="product-hero-copy">
+    <p class="eyebrow">Private file bridge</p>
+    <h1>LuomoFile Hub</h1>
+    <p class="hero-lead">One quiet place for private uploads, image hosting and links that expire when you want them to.</p>
+    <div class="actions">
+      <a class="btn primary" href="/login">Open your files</a>
+      <a class="btn secondary" href="/register">Create account</a>
+    </div>
+    <div class="trust-row" aria-label="Service properties">
+      <span><i class="signal ok"></i>Tokyo storage online</span>
+      <span>Private by default</span>
+      <span>API ready</span>
+    </div>
+  </div>
+  <div class="file-preview" aria-label="File workflow preview">
+    <div class="preview-head"><span>Recent space</span><span class="preview-status">Secure</span></div>
+    <div class="preview-file"><span class="file-glyph">IMG</span><span><strong>scene-reference.png</strong><small>Image / private</small></span><b>2.4 MB</b></div>
+    <div class="preview-file"><span class="file-glyph archive">ZIP</span><span><strong>project-build.zip</strong><small>Temporary share / 24h</small></span><b>184 MB</b></div>
+    <div class="preview-file"><span class="file-glyph code">API</span><span><strong>automated-upload</strong><small>Scoped API key</small></span><b>Ready</b></div>
+    <div class="storage-line"><span style="width: 38%"></span></div>
+    <div class="preview-foot"><span>Encrypted in transit</span><span>38% used</span></div>
+  </div>
+</section>
+<section class="feature-strip" aria-label="Core workflows">
+  <article><span class="feature-index">01</span><h2>Upload privately</h2><p>Files start without a public URL. You decide when sharing is enabled.</p></article>
+  <article><span class="feature-index">02</span><h2>Share temporarily</h2><p>Create short-lived links for hand-offs, previews and one-time transfers.</p></article>
+  <article><span class="feature-index">03</span><h2>Automate safely</h2><p>Use scoped API keys for project assets, images and deployment workflows.</p></article>
+</section>
+{% elif user.status != 'active' %}
+<section class="panel">
+  <p class="eyebrow">Account Status</p>
+  <h1>Email verification required</h1>
+  <p class="muted">Please verify your email address. You will be able to upload files and create links after verification.</p>
+</section>
+{% else %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">Dashboard</p>
+    <h1>Your File Hub</h1>
+    <p>Manage files, temporary shares, images, and API storage.</p>
+  </div>
+  <div class="actions">
+    <a class="btn primary" href="/upload">Upload</a>
+    <a class="btn secondary" href="/temp">Temp</a>
+    <a class="btn secondary" href="/images">Images</a>
+    <a class="btn ghost" href="/files">Files</a>
+  </div>
+</section>
+<section class="grid metrics">
+  <article><span>My Files</span><strong>{{ stats.files }}</strong></article>
+  <article><span>My Images</span><strong>{{ stats.images }}</strong></article>
+  <article><span>My Temp Files</span><strong>{{ stats.temp }}</strong></article>
+  <article><span>My Stored Bytes</span><strong>{{ stats.bytes }}</strong></article>
+</section>
+{% if user.role == 'admin' %}
+<section class="grid two">
+  <article class="panel"><h2>Admin Summary</h2><div class="status-list"><div><span>Site files</span><strong>{{ stats.site_files }}</strong></div><div><span>Site bytes</span><strong>{{ stats.site_bytes }}</strong></div></div></article>
+  <article class="panel"><h2>Storage Summary</h2>{% for b in backends %}<div class="row"><span>{{ 'cos_tky' if b.name == 'cos' else b.name }}</span><span class="badge {{ 'ok' if b.enabled else 'muted' }}">{{ 'enabled' if b.enabled else 'disabled' }}</span></div>{% endfor %}<a class="btn secondary" href="/admin/storage">Storage details</a></article>
+</section>
+{% endif %}
+<section class="grid two">
+  <article class="panel">
+    <h2>Recent Uploads</h2>
+    {% for f in recent %}<div class="row"><a href="/files/{{ f.file_id }}" class="truncate" title="{{ f.original_filename }}">{{ f.original_filename }}</a><span>{{ f.purpose }}</span><span class="badge {{ 'ok' if f.link_enabled else 'muted' }}">{{ 'public link' if f.link_enabled else 'Private / No public link' }}</span></div>{% else %}<p class="muted">No files yet.</p>{% endfor %}
+  </article>
+  <article class="panel">
+    <h2>Recent Public Links</h2>
+    {% for f in recent_links %}
+      <div class="public-link-card">
+        <div class="public-link-head">
+          <a href="/files/{{ f.file_id }}" class="truncate" title="{{ f.original_filename }}">{{ f.original_filename }}</a>
+          <span class="badge ok">public link</span>
+        </div>
+        <div class="public-link-body">
+          <code class="truncate" title="{{ f.public_url }}">{{ f.public_url }}</code>
+          <button onclick="navigator.clipboard.writeText('{{ f.public_url }}')" class="btn ghost btn-sm">Copy</button>
+          <a href="{{ f.public_url }}" target="_blank" rel="noreferrer" class="btn ghost btn-sm">Open</a>
+        </div>
+      </div>
+      {% else %}<p class="muted">No public links yet.</p>{% endfor %}
+  </article>
+</section>
+{% endif %}
+{% endblock %}

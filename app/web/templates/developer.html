@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Developer - LuomoFile Hub{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div><p class="eyebrow">Developer</p><h1>Developer API</h1><p>Use scoped API keys to upload, list, read, delete, and manage direct links.</p></div>
+  <a class="btn primary" href="/developer/docs">API Docs</a>
+</section>
+<section class="panel">
+  <h2>Quick upload</h2>
+  <pre>curl -H "Authorization: Bearer lfk_xxx" \
+  -F "file=@example.png" \
+  -F "purpose=image" \
+  -F "generate_link=false" \
+  https://file.luomo.moe/api/v1/files/upload</pre>
+</section>
+{% endblock %}

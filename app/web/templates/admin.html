@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Admin - LuomoFile Hub{% endblock %}
+{% block content %}
+<section class="page-head"><div><p class="eyebrow">Control room</p><h1>Admin Console</h1></div><form method="post" action="/admin/cleanup/run"><button class="btn secondary">Run Cleanup</button></form></section>
+<section class="grid three">
+  <a class="panel link" href="/admin/files"><h2>Files</h2><p>Manage uploads and visibility.</p></a>
+  <a class="panel link" href="/admin/storage"><h2>Storage</h2><p>R2, cos_tky, cos_sv, local temp capacity.</p></a>
+  <a class="panel link" href="/admin/api-keys"><h2>API Keys</h2><p>Create scoped API tokens.</p></a>
+</section>
+<section class="grid two">
+  <article class="panel"><h2>Recent Files</h2>{% for f in files %}<div class="row"><a href="/admin/files/{{ f.file_id }}">{{ f.original_filename }}</a><span>{{ f.status }}</span></div>{% endfor %}</article>
+  <article class="panel"><h2>Cleanup Jobs</h2>{% for j in jobs %}<div class="row"><span>{{ j.started_at }}</span><span>{{ j.status }}</span><span>{{ j.deleted_count }} deleted</span></div>{% else %}<p class="muted">No cleanup jobs yet.</p>{% endfor %}</article>
+</section>
+{% endblock %}

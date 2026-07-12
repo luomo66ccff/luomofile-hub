@@ -1,0 +1,20 @@
+services:
+  luomofile-hub:
+    build: .
+    container_name: luomofile-hub
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ${COS_HOST_MOUNT_PATH:-./data/cos}:/mnt/cos
+      - ${COS_SV_HOST_MOUNT_PATH:-./data/cos-sv}:/mnt/cos_sv
+    ports:
+      - "127.0.0.1:8791:8791"
+    networks:
+      - default
+      - luomocore_default
+
+networks:
+  luomocore_default:
+    external: true

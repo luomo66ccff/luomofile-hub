@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Clean Test Files - LuomoFile Hub{% endblock %}
+{% macro human_size(n) -%}
+  {%- set n = n or 0 -%}
+  {%- if n < 1024 -%}{{ n }} B
+  {%- elif n < 1048576 -%}{{ '%.1f'|format(n / 1024) }} KB
+  {%- elif n < 1073741824 -%}{{ '%.1f'|format(n / 1048576) }} MB
+  {%- else -%}{{ '%.1f'|format(n / 1073741824) }} GB
+  {%- endif -%}
+{%- endmacro %}
+{% block content %}
+<section class="page-head"><div><p class="eyebrow">Admin</p><h1>Clean Test Files</h1><p>Only obvious test filenames are listed here.</p></div><a class="btn secondary" href="/files?scope=all">Back</a></section>
+<section class="panel">
+  <p class="error">This will delete active matches named hello.txt, policy.txt, or luomofile-test.txt. Review the list before confirming.</p>
+  {% for f in files %}
+  <div class="row"><a href="/files/{{ f.file_id }}">{{ f.original_filename }}</a><span>{{ human_size(f.size_bytes) }}</span><span>{{ f.status }}</span><span>{{ f.uploaded_at }}</span></div>
+  {% else %}<p class="muted">No test files found.</p>{% endfor %}
+  {% if files %}
+  <form method="post" action="/files/cleanup/test-files"><button class="btn danger">Confirm clean test files</button></form>
+  {% endif %}
+</section>
+{% endblock %}

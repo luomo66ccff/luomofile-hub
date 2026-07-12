@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Upload - LuomoFile Hub{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="/static/upload-enhance.css?v=upload-flow-20260620">
+{% endblock %}
+{% block content %}
+{% set purpose_default = request.query_params.get('purpose') or ('temp' if mode == 'temp' else 'other') %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">{{ mode }}</p>
+    <h1>{{ 'Temporary Share' if mode == 'temp' else 'Upload File' }}</h1>
+    <p>Drop files into one upload box or click to choose them.</p>
+  </div>
+</section>
+<section class="panel luomo-card">
+  <div class="sakura-corner" aria-hidden="true"><span></span><span></span><span></span></div>
+  {% if not user %}
+  <div class="upload-locked">
+    <strong>Sign in required</strong>
+    <p>Please log in or create an account to upload files.</p>
+    <div class="actions">
+      <a class="btn primary" href="/login">Login</a>
+      <a class="btn secondary" href="/register">Register</a>
+    </div>
+  </div>
+  {% elif user.status != 'active' %}
+  <div class="upload-locked">
+    <strong>Email verification required</strong>
+    <p>Please verify your email address before uploading files.</p>
+  </div>
+  {% else %}
+  <form id="upload-form" class="form-grid enhanced-upload" method="post" action="{{ '/temp' if mode == 'temp' else '/upload' }}" enctype="multipart/form-data" data-detail-base="{{ '/admin/files/' if user.role == 'admin' else '/files/' }}">
+    <label class="full native-file-row">File<input id="file-input" type="file" name="file" multiple></label>
+    <div class="upload-dropzone full" id="upload-dropzone" tabindex="0" role="button" aria-controls="file-input">
+      <div class="upload-dropzone-title">Drop files here</div>
+      <div class="upload-dropzone-subtitle">or click to choose files</div>
+      <div class="upload-dropzone-hint">Supports multiple files</div>
+    </div>
+    <div id="selected-files" class="selected-files full" aria-live="polite"></div>
+    <div class="mascot-card full">
+      <div class="mascot-orb"><div class="mascot-face">✦</div></div>
+      <div class="mascot-content"><p class="eyebrow">Luomo-chan</p><h3>Private by default.</h3><p>Files stay quiet in your cloud unless you enable a public link.</p></div>
+    </div>
+    {% if mode != 'temp' %}
+    <label>Visibility<select name="visibility"><option value="unlisted">unlisted</option><option value="public">public</option><option value="private">private</option></select></label>
+    <label>Purpose<select name="purpose"><option value="other" {% if purpose_default == 'other' %}selected{% endif %}>other</option><option value="image" {% if purpose_default == 'image' %}selected{% endif %}>image</option><option value="api" {% if purpose_default == 'api' %}selected{% endif %}>api</option><option value="backup" {% if purpose_default == 'backup' %}selected{% endif %}>backup</option></select></label>
+    {% else %}
+    <input type="hidden" name="purpose" value="temp">
+    <label>TTL<select name="ttl_seconds"><option value="3600">1 hour</option><option value="21600">6 hours</option><option value="86400" selected>24 hours</option><option value="259200">3 days</option><option value="604800">7 days</option></select></label>
+    {% endif %}
+    <label>Storage<select name="storage_policy"><option value="auto">auto</option><option value="cos">cos_tky</option><option value="local_temp">local_temp</option></select></label>
+    <label class="check-row full">
+      <input id="generate-link" type="checkbox" name="generate_link" value="1">
+      <span>
+        <strong>Generate public direct link after upload</strong>
+        <small>Unchecked: saved privately. Checked: anyone with the link can view or download it.</small>
+      </span>
+    </label>
+    <div id="upload-message" class="upload-message full" role="status" hidden></div>
+    <div class="upload-actions full">
+      <button id="upload-button" class="btn primary" type="button">Upload</button>
+      <button id="clear-files" class="btn secondary" type="button">Clear selection</button>
+    </div>
+    <div id="upload-results" class="upload-results full" aria-live="polite"></div>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+{% if user and user.status == 'active' %}
+<script src="/static/upload-enhance.js?v=upload-flow-20260620" defer></script>
+{% endif %}
+{% endblock %}

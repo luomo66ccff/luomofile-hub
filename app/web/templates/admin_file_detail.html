@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ file.original_filename }} - LuomoFile Hub{% endblock %}
+{% block content %}
+{% set backend_name = 'cos_tky' if file.storage_backend == 'cos' else file.storage_backend %}
+<section class="page-head"><div><p class="eyebrow">File detail</p><h1>{{ file.original_filename }}</h1></div><a class="btn secondary" href="/admin/files">Back</a></section>
+<section class="panel">
+  <dl class="kv">
+    <div><dt>ID</dt><dd>{{ file.file_id }}</dd></div><div><dt>Size</dt><dd>{{ file.size_bytes }}</dd></div><div><dt>MIME</dt><dd>{{ file.mime_type }}</dd></div>
+    <div><dt>Backend</dt><dd>{{ backend_name }}</dd></div><div><dt>Object</dt><dd><code>{{ file.object_key }}</code></dd></div>
+    <div><dt>Direct link</dt><dd>{% if file.link_enabled and file.public_url %}<a id="direct-link" href="{{ file.public_url }}">{{ file.public_url }}</a>{% else %}<span class="muted">Private / No public link</span>{% endif %}</dd></div>
+    <div><dt>Link status</dt><dd><span class="badge {{ 'ok' if file.link_enabled else 'muted' }}">{{ 'enabled' if file.link_enabled else 'disabled' }}</span></dd></div>
+  </dl>
+  <div class="actions">
+    {% if file.link_enabled and file.public_url %}
+    <button class="btn secondary" type="button" data-copy-target="direct-link">Copy direct link</button>
+    <form method="post" action="/files/{{ file.file_id }}/link/revoke"><button class="btn danger">Revoke direct link</button></form>
+    {% else %}
+    <form method="post" action="/files/{{ file.file_id }}/link/generate"><button class="btn secondary">Generate direct link</button></form>
+    {% endif %}
+  </div>
+  <form method="post" action="/admin/files/{{ file.file_id }}/visibility"><select name="visibility"><option value="public">public</option><option value="unlisted">unlisted</option><option value="private">private</option></select><button class="btn secondary">Change Visibility</button></form>
+  <form method="post" action="/admin/files/{{ file.file_id }}/delete"><button class="btn danger">Delete</button></form>
+</section>
+<script>
+document.querySelectorAll("[data-copy-target]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const target = document.getElementById(button.dataset.copyTarget);
+    if (!target) return;
+    await navigator.clipboard.writeText(target.textContent.trim());
+    button.textContent = "Copied";
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}API Keys - LuomoFile Hub{% endblock %}
+{% block content %}
+<section class="page-head"><div><p class="eyebrow">Scoped access</p><h1>API Keys</h1></div></section>
+{% if created_key %}<div class="toast"><strong>Copy now:</strong> <code>{{ created_key }}</code>. It will not be shown again.</div>{% endif %}
+<section class="panel">
+  <form class="form-grid" method="post" action="/admin/api-keys/create">
+    <label>User<select name="user_id">{% for u in users %}<option value="{{ u.id }}">{{ u.username }}</option>{% endfor %}</select></label>
+    <label>Name<input name="name" value="default"></label>
+    <label class="full">Scopes<input name="scopes" value="files:upload,files:read,files:delete,files:list,temp:upload,images:upload"></label>
+    <button class="btn primary full">Create API Key</button>
+  </form>
+</section>
+<section class="panel table">{% for k in keys %}<div class="row"><span>{{ k.username }}</span><span>{{ k.name }}</span><span>{{ k.key_prefix }}...</span><span>{{ k.status }}</span><form method="post" action="/admin/api-keys/{{ k.id }}/revoke"><button class="btn ghost">Revoke</button></form></div>{% endfor %}</section>
+{% endblock %}
