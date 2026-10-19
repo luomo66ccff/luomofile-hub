@@ -1,0 +1,68 @@
+{% extends "layouts/base.html" %}
+{% from "macros/ui.html" import notice, lightbox, pagination as pager %}
+{% block title %}我的图片 · LuomoFile{% endblock %}
+{% block content %}
+<section class="page-head">
+<div class="titles">
+<p class="berth">Your image library</p>
+<h1>我的图片</h1>
+<p>每张原图只保留一份，可以加入多个相册。直链与相册展示分别授权。</p>
+</div>{% if user and user.status == 'active' %}<a class="btn btn-primary" href="/images/upload">＋ 上传图片</a>{% else %}<a class="btn btn-primary" href="/login?next=/images">登录后查看</a>{% endif %}</section>
+{{ notice(message, error) }}
+{% if user and user.status == 'active' %}
+<div class="toolbar"><form class="searchbox" method="get" action="/images"><svg aria-hidden="true"><use href="#i-search"/></svg><input aria-label="搜索图片" type="search" name="q" value="{{ filters.q }}" placeholder="文件名或标签"><button class="visually-hidden" type="submit">搜索</button></form><nav class="chips" aria-label="图片类型"><a class="chip" aria-current="true" href="/images">全部图片</a></nav><label class="toolbar-sort" data-collection-tools hidden><span class="visually-hidden">本页排序</span><select data-collection-sort aria-label="本页排序"><option value="default" selected>默认顺序</option><option value="name">本页按名称</option></select></label><div class="view-toggle" role="group" aria-label="展示视图" data-collection-tools hidden><button type="button" data-collection-view="grid" aria-pressed="true" aria-label="网格"><svg aria-hidden="true"><use href="#i-grid"/></svg></button><button type="button" data-collection-view="list" aria-pressed="false" aria-label="列表"><svg aria-hidden="true"><use href="#i-list"/></svg></button></div></div>
+{% if albums and files %}<details class="panel">
+<summary>选择图片，批量加入相册</summary>
+<form id="images-album-form" class="form-grid" method="post" action="/images/album" data-requires-selection>
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<label class="field full">目标相册<select name="album_id" required>{% for a in albums %}<option value="{{ a.album_id }}">{{ a.title }}</option>{% endfor %}</select>
+</label>
+<label class="field">同意的最大浏览范围<select name="audience_cap">
+<option value="restricted" selected>仅受邀成员</option>
+<option value="authenticated">已激活账户</option>
+<option value="public">所有人</option>
+</select>
+<small>小于相册当前范围时，图片可能暂不展示。</small>
+</label>
+<label class="switch">
+<input type="checkbox" name="allow_original" value="1">
+<span>
+<strong>允许相册读者查看原图</strong>
+<small>原图可能含拍摄位置等信息。</small>
+</span>
+</label>
+<label class="switch full">
+<input type="checkbox" name="consent" value="1" required>
+<span>确认将选中的本人图片加入相册，并同意所选范围。</span>
+</label>
+<button class="btn btn-primary full" type="submit">加入选中图片</button>
+</form>
+<p class="muted small">在下方图片卡片上勾选要加入的照片。</p>
+</details>{% endif %}
+{% endif %}
+<section class="photo-wall" data-collection>{% for f in files %}<article class="photo-entry">
+<a class="photo" href="/images/{{ f.file_id }}" data-lightbox-item data-preview="{{ f.preview_url }}" data-title="{{ f.original_filename }}" data-caption="{{ f.original_filename }}">{% if f.thumb_url %}<img src="{{ f.thumb_url }}" alt="{{ f.original_filename }}" loading="lazy" decoding="async" {% if f.width and f.height %}width="{{ f.width }}" height="{{ f.height }}"{% endif %} data-media-image>{% else %}<span class="media-placeholder">预览暂不可用</span>{% endif %}</a>
+<div class="image-info">{% if albums %}<label class="switch">
+<input type="checkbox" name="file_ids" value="{{ f.file_id }}" form="images-album-form">
+<strong>{{ f.original_filename }}</strong>
+</label>{% else %}<strong>{{ f.original_filename }}</strong>{% endif %}<p>{{ human_size(f.size_bytes) }} · {{ human_date(f.uploaded_at) }} · {{ f.album_count|default(0) }} 本相册</p>
+<span class="badge" data-tone="{{ 'ok' if f.link_enabled else '' }}">{{ '图床直链已开启' if f.link_enabled else '未开启图床直链' }}</span>
+<div class="btn-row">
+<a class="btn " href="/images/{{ f.file_id }}">详情与相册</a>{% if f.link_enabled and f.public_url %}<button class="btn btn-ghost" type="button" data-copy="{{ f.public_url }}">复制 URL</button>
+<button class="btn btn-ghost" type="button" data-copy="![image]({{ f.public_url }})">Markdown</button>
+<form method="post" action="/files/{{ f.file_id }}/link/revoke" data-confirm="吊销公开直链后，使用此地址的网页或分享会失效。确认吊销？">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<input type="hidden" name="return_to" value="/images">
+<button class="btn btn-danger" type="submit">吊销</button>
+</form>{% elif f.visibility != 'private' %}<form method="post" action="/files/{{ f.file_id }}/link/generate">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<input type="hidden" name="return_to" value="/images">
+<button class="btn btn-ghost" type="submit">开启直链</button>
+</form>{% endif %}</div>{% if f.link_enabled and f.public_url %}<code>{{ f.public_url }}</code>{% endif %}</div>
+</article>{% else %}<div class="empty full">
+<div class="empty-mark" aria-hidden="true">▧</div>
+<h2>{{ '没有找到这样的图片' if filters and filters.q else '第一张照片，从这里开始' }}</h2>
+<p>上传图片后，可以建立相册、参与共建，也可以单独生成图床直链。</p>
+<a class="btn btn-primary" href="{{ '/images/upload' if user else '/login?next=/images' }}">{{ '上传图片' if user else '登录后上传' }}</a>
+</div>{% endfor %}</section>
+{{ pager(pagination, request) }}{{ lightbox() }}{% endblock %}

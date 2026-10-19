@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}文件星港 · LuomoFile{% endblock %}</title>
+<script src="/static/js/theme-init.js?v={{ asset_version }}"></script>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/css/harbor.css?v={{ asset_version }}">
+<link rel="stylesheet" href="/static/css/pages.css?v={{ asset_version }}">{% block head_extra %}{% endblock %}
+</head><body data-csrf="{{ csrf_token }}" data-upload-enabled="{{ 'true' if user and user.status == 'active' else 'false' }}" data-signed-in="{{ 'true' if user else 'false' }}">
+{% include 'partials/icons.html' %}<a class="skip-link" href="#main">跳到主要内容</a>
+{% set path = request.url.path %}
+{% set navigation = [('/albums','album','相册'),('/images','image','图片'),('/files','box','文件'),('/temp','ferry','临时分享')] if user else [('/gallery','album','发现相册'),('/developer/docs','code','开发者文档')] %}
+<header class="harbor-bar"><div class="wrap">
+<a class="brand" href="/" aria-label="LuomoFile 首页"><span class="brand-mark">{% include 'partials/mark.html' %}</span><span class="brand-text"><strong>LuomoFile</strong><small>Star Harbor</small></span></a>
+<nav class="harbor-nav" aria-label="主要导航">{% for href, icon, label in navigation %}<a href="{{ href }}" {% if path == href or path.startswith(href ~ '/') %}aria-current="page"{% endif %}><svg aria-hidden="true"><use href="#i-{{ icon }}"/></svg><span>{{ label }}</span></a>{% endfor %}</nav>
+<div class="bar-tools"><button class="search-trigger" type="button" data-palette-open aria-label="打开命令面板"><svg aria-hidden="true"><use href="#i-search"/></svg><span class="label">搜索文件、相册或跳转…</span><kbd>Ctrl</kbd><kbd>K</kbd></button>
+<button class="btn btn-ghost btn-icon" type="button" data-theme-toggle aria-label="切换日夜"><svg aria-hidden="true"><use href="#i-moon"/></svg></button>
+{% if user %}{% if user.status == 'active' %}<a class="btn btn-primary bar-upload" href="/upload"><svg aria-hidden="true"><use href="#i-upload"/></svg><span class="label">靠岸上传</span></a>{% endif %}
+<details class="account"><summary aria-label="账户菜单"><span class="avatar">{{ user.username[:1]|upper }}</span></summary><div class="menu"><div class="menu-label">{{ user.username }} · {{ '管理员' if user.role == 'admin' else '开发者' }}</div><a href="/developer">开发者</a><a href="/developer/docs">API 文档</a>{% if user.role == 'admin' %}<a href="/admin">站点管理</a><a href="/admin/api-keys">API 密钥</a>{% endif %}<hr><form method="post" action="/logout"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit">退出登录</button></form></div></details>
+{% else %}<a class="btn btn-ghost btn-sm" href="/login">登录</a><a class="btn btn-primary btn-sm" href="/register">注册</a>{% endif %}</div></div></header>
+<main id="main" tabindex="-1"><div class="wrap" data-page="{{ nav }}">
+{% block section_nav %}{% if nav in ['albums','gallery'] %}<nav class="tabs" aria-label="相册导航">{% if user %}<a href="/albums" {% if nav == 'albums' %}aria-current="page"{% endif %}>我的相册</a>{% endif %}<a href="/gallery" {% if nav == 'gallery' %}aria-current="page"{% endif %}>发现相册</a></nav>{% endif %}{% endblock %}
+{% block content %}{% endblock %}</div></main>
+<footer class="harbor-foot"><div class="wrap"><span>LuomoFile · 文件星港 · 洛墨站夜行线</span><nav><a href="/gallery">发现相册</a><a href="/developer/docs">开发者文档</a></nav></div></footer>
+{% include 'partials/overlays.html' %}<script type="module" src="/static/js/harbor.js?v={{ asset_version }}"></script>{% block scripts %}{% endblock %}
+</body></html>

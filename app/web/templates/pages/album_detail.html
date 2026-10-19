@@ -1,0 +1,40 @@
+{% extends "layouts/base.html" %}
+{% from "macros/ui.html" import policy_label, photo_card, lightbox, pagination as pager, notice with context %}
+{% block title %}{{ album.title }} · LuomoFile{% endblock %}
+{% block content %}
+<nav class="crumbs">
+<a href="{{ '/albums' if user else '/gallery' }}">{{ '我的相册' if user else '发现相册' }}</a>
+<span aria-hidden="true">/</span>
+<span>{{ album.title }}</span>
+</nav>
+{{ notice(message, error) }}
+<section class="page-head album-heading">
+<div>
+<p class="berth">{{ 'Shared album' if album.kind == 'shared' else 'Personal album' }}</p>
+<h1 class="user-content">{{ album.title }}</h1>{% if album.description %}<p class="album-description">{{ album.description }}</p>{% endif %}<div class="album-card-meta">
+<span>{{ album.owner_username }}</span>
+<span>{{ pagination.total }} 张照片</span>
+<span class="badge">{{ policy_label(album.view_policy) }}可浏览</span>{% if album.review_required and album.kind == 'shared' %}<span class="badge">投稿需审核</span>{% endif %}</div>
+<div class="btn-row">{% if capabilities.can_contribute %}<a class="btn btn-primary" href="/albums/{{ album.album_id }}/contribute">＋ 添加照片</a>{% endif %}
+{% if capabilities.can_manage %}<a class="btn " href="/albums/{{ album.album_id }}/manage">管理相册</a>{% endif %}<button class="btn btn-ghost" type="button" data-copy="{{ request.url }}">复制相册地址</button>
+</div>
+</div>
+<div class="album-detail-cover">{% if album.cover_url %}<img src="{{ album.cover_url }}" alt="{{ album.title }} 的封面" decoding="async" data-media-image>{% else %}<div class="cover-empty">
+<span aria-hidden="true">▤</span>
+<small>记忆正在积累</small>
+</div>{% endif %}</div>
+</section>
+<section class="photo-wall" aria-label="相册照片">{% for p in items %}{{ photo_card(p, album.album_id) }}{% else %}<div class="empty full">
+<div class="empty-mark" aria-hidden="true">▧</div>
+<h2>这里等着第一张照片</h2>
+<p>{{ '上传照片，或从自己的图片库中选择。' if capabilities.can_contribute else '暂时没有可展示的照片，稍后再来看看。' }}</p>{% if capabilities.can_contribute %}<a class="btn btn-primary" href="/albums/{{ album.album_id }}/contribute">添加照片</a>{% endif %}</div>{% endfor %}</section>
+{{ pager(pagination, request) }}{{ lightbox() }}
+{% if user and not capabilities.is_owner and capabilities.is_member %}<details class="panel">
+<summary>成员操作</summary>
+<form method="post" action="/albums/{{ album.album_id }}/leave" data-confirm="退出相册后，你已贡献的照片仍会保留。可先在图片详情撤回自己的照片。确认退出？">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<p class="muted">退出成员关系不会自动撤回已投稿照片。你仍可从图片库撤回自己的贡献。</p>
+<button class="btn btn-danger" type="submit">退出相册</button>
+</form>
+</details>{% endif %}
+{% endblock %}

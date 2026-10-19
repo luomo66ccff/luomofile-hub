@@ -1,0 +1,31 @@
+{% extends "layouts/base.html" %}
+{% block title %}清理测试文件 · LuomoFile{% endblock %}
+{% block content %}
+<nav class="crumbs">
+<a href="/files?scope=all">文件库</a>
+<span aria-hidden="true">/</span>
+<span>测试文件清理</span>
+</nav>
+<section class="page-head">
+<div class="titles">
+<p class="berth">Targeted maintenance</p>
+<h1>确认测试文件清理范围</h1>
+<p>仅处理以下匹配项，执行前请核对文件名称与上传时间。</p>
+</div>
+</section>
+<section class="panel danger-zone">
+<div class="notice" data-tone="danger" role="alert">本次清理会删除活动文件中名称完全匹配 hello.txt、policy.txt 或 luomofile-test.txt 的项目。原图删除会同时撤销关联展示。</div>{% for f in files %}<div class="row">
+<a href="/files/{{ f.file_id }}" class="truncate">{{ f.original_filename }}</a>
+<span>{{ human_size(f.size_bytes) }}</span>
+<span class="badge">{{ status_label(f.status) }}</span>
+<span class="subtle">{{ human_date(f.uploaded_at) }}</span>
+</div>{% else %}<div class="empty">
+<div class="empty-mark" aria-hidden="true">✓</div>
+<h2>没有匹配的测试文件</h2>
+<p>当前无需执行清理。</p>
+</div>{% endfor %}<div class="btn-row">{% if files %}<form method="post" action="/files/cleanup/test-files" data-confirm="确认删除页面列出的测试文件？">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<button class="btn btn-danger" type="submit">确认清理以上 {{ files|length }} 个文件</button>
+</form>{% endif %}<a class="btn " href="/files?scope=all">返回文件库</a>
+</div>
+</section>{% endblock %}

@@ -39,6 +39,65 @@ SCHEMA = [
     )
     """,
     """
+    CREATE TABLE IF NOT EXISTS subscription_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        file_id TEXT NOT NULL,
+        label TEXT NOT NULL,
+        token_prefix TEXT NOT NULL,
+        token_hash TEXT NOT NULL UNIQUE,
+        status TEXT NOT NULL DEFAULT 'active',
+        created_by INTEGER,
+        created_at TEXT NOT NULL,
+        expires_at TEXT,
+        last_used_at TEXT,
+        use_count INTEGER NOT NULL DEFAULT 0,
+        revoked_at TEXT,
+        FOREIGN KEY(file_id) REFERENCES files(file_id),
+        FOREIGN KEY(created_by) REFERENCES users(id)
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_subscription_tokens_file_status
+    ON subscription_tokens(file_id, status)
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_subscription_tokens_hash
+    ON subscription_tokens(token_hash)
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS subscription_create_requests (
+        idempotency_key TEXT PRIMARY KEY,
+        created_by INTEGER,
+        request_fingerprint TEXT,
+        file_id TEXT,
+        label TEXT,
+        expires_in_days INTEGER,
+        token_id INTEGER UNIQUE,
+        status TEXT NOT NULL DEFAULT 'ready',
+        error_message TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        completed_at TEXT,
+        FOREIGN KEY(created_by) REFERENCES users(id),
+        FOREIGN KEY(file_id) REFERENCES files(file_id),
+        FOREIGN KEY(token_id) REFERENCES subscription_tokens(id)
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_subscription_create_requests_status
+    ON subscription_create_requests(status, updated_at)
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS subscription_identity_health (
+        id INTEGER PRIMARY KEY CHECK(id=1),
+        last_attempt_at TEXT,
+        last_success_at TEXT,
+        last_error TEXT,
+        target_count INTEGER NOT NULL DEFAULT 0,
+        identity_count INTEGER NOT NULL DEFAULT 0
+    )
+    """,
+    """
     CREATE TABLE IF NOT EXISTS email_verification_tokens (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -48,6 +107,14 @@ SCHEMA = [
         expires_at TEXT NOT NULL,
         used_at TEXT,
         FOREIGN KEY(user_id) REFERENCES users(id)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS email_verification_send_limits (
+        bucket_hash TEXT PRIMARY KEY,
+        window_started_at TEXT NOT NULL,
+        last_sent_at TEXT NOT NULL,
+        send_count INTEGER NOT NULL
     )
     """,
     """
@@ -169,14 +236,35 @@ def init_db() -> None:
         for statement in SCHEMA:
             conn.execute(statement)
         _migrate_files_link_policy(conn)
+        _migrate_subscription_identity(conn)
+        _migrate_subscription_token_display(conn)
+        from app.gallery_migrations import migrate_gallery
+        migrate_gallery(conn)
         _seed_admin(conn)
         _seed_backends(conn)
         conn.commit()
 
 
+def _migrate_subscription_identity(conn: sqlite3.Connection) -> None:
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(subscription_tokens)").fetchall()}
+    if "identity_version" not in columns:
+        conn.execute("ALTER TABLE subscription_tokens ADD COLUMN identity_version INTEGER NOT NULL DEFAULT 1")
+    if "identity_synced_at" not in columns:
+        conn.execute("ALTER TABLE subscription_tokens ADD COLUMN identity_synced_at TEXT")
+    if "sync_error" not in columns:
+        conn.execute("ALTER TABLE subscription_tokens ADD COLUMN sync_error TEXT")
+
+
+def _migrate_subscription_token_display(conn: sqlite3.Connection) -> None:
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(subscription_tokens)").fetchall()}
+    if "token_ciphertext" not in columns:
+        conn.execute("ALTER TABLE subscription_tokens ADD COLUMN token_ciphertext TEXT")
+
+
 def _migrate_files_link_policy(conn: sqlite3.Connection) -> None:
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(files)").fetchall()}
-    if "link_enabled" not in columns:
+    needs_legacy_backfill = "link_enabled" not in columns
+    if needs_legacy_backfill:
         conn.execute("ALTER TABLE files ADD COLUMN link_enabled INTEGER NOT NULL DEFAULT 0")
     if "link_created_at" not in columns:
         conn.execute("ALTER TABLE files ADD COLUMN link_created_at TEXT")
@@ -184,6 +272,8 @@ def _migrate_files_link_policy(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE files ADD COLUMN link_revoked_at TEXT")
     if "tags" not in columns:
         conn.execute("ALTER TABLE files ADD COLUMN tags TEXT")
+    if not needs_legacy_backfill:
+        return
     now = now_iso()
     conn.execute(
         """
@@ -232,6 +322,7 @@ def _seed_backends(conn: sqlite3.Connection) -> None:
         ("cos_sv", "cos", 1 if settings.cos_sv_enabled else 0, "cos-sv-mounted", settings.cos_sv_public_base_url, settings.cos_sv_max_capacity_bytes, 20),
         ("cos", "cos", 1 if settings.cos_enabled else 0, settings.cos_bucket or "cos-mounted", settings.cos_public_base_url, settings.cos_max_capacity_bytes, 30),
         ("local_temp", "local_temp", 1 if settings.local_temp_enabled else 0, "local", "", settings.local_temp_max_capacity_bytes, 100),
+        ("private_media", "local_private", 1, "local-private", "", getattr(settings, "private_media_max_capacity_bytes", 512 * 1024**2), 110),
     ]
     for row in rows:
         conn.execute(

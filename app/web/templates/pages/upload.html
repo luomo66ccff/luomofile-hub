@@ -1,0 +1,97 @@
+{% extends "layouts/base.html" %}
+{% from "macros/ui.html" import notice %}
+{% block title %}{{ '临时分享' if mode == 'temp' else '上传图片' if mode == 'image' else '上传文件' }} · LuomoFile{% endblock %}
+
+{% block content %}
+{% set is_image = mode == 'image' %}
+{% set purpose_default = request.query_params.get('purpose') or ('temp' if mode == 'temp' else 'image' if is_image else 'other') %}
+<section class="page-head">
+<div class="titles">
+<p class="berth">{{ 'Temporary sharing' if mode == 'temp' else 'Add to your library' }}</p>
+<h1>{{ '临时分享' if mode == 'temp' else '上传图片' if is_image else '上传文件' }}</h1>
+<p>{{ '按需要选择有效期，上传后可独立生成分享链接。' if mode == 'temp' else '上传到我的图片库，随后可以整理进一本或多本相册。' if is_image else '保存原始文件，并按需要开启或撤回公开直链。' }}</p>
+</div>
+<a class="btn " href="{{ '/images' if is_image else '/files' }}">返回{{ '图片库' if is_image else '文件库' }}</a>
+</section>
+{{ notice(message, error) }}
+<section class="panel upload-workspace">{% if not user %}<div class="empty">
+<div class="empty-mark" aria-hidden="true">＋</div>
+<h2>登录后开始上传</h2>
+<p>你的图片和文件保存在自己的空间。</p>
+<div class="btn-row">
+<a class="btn btn-primary" href="/login?next={{ request.url.path }}">登录</a>
+<a class="btn " href="/register">创建账户</a>
+</div>
+</div>
+{% elif user.status != 'active' %}<div class="empty">
+<h2>请先验证邮箱</h2>
+<p>验证完成后即可上传照片和文件。</p>
+<a class="btn btn-primary" href="/register">重新发送验证邮件</a>
+</div>
+{% else %}
+<form id="upload-form" class="form-grid enhanced-upload" method="post" action="{{ '/temp' if mode == 'temp' else '/images/upload' if is_image else '/upload' }}" enctype="multipart/form-data" data-detail-base="{{ '/images/' if is_image else '/admin/files/' if user.role == 'admin' else '/files/' }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<div class="quick-dock upload-dropzone full" id="upload-dropzone" role="group" aria-label="选择或拖拽{{ '图片' if is_image else '文件' }}">
+<label class="visually-hidden" for="file-input">选择{{ '图片' if is_image else '文件' }}</label>
+<input id="file-input" type="file" name="{{ 'files' if is_image else 'file' }}" {% if is_image %}accept="image/jpeg,image/png,image/webp,image/gif,image/avif"{% endif %} multiple required>
+<div class="upload-dropzone-inner">
+<svg aria-hidden="true"><use href="#i-anchor"/></svg>
+<div class="upload-dropzone-title">选择{{ '照片' if is_image else '文件' }}，或拖到这里</div>
+<div class="upload-dropzone-subtitle">支持一次选择多个{{ '照片' if is_image else '文件' }}</div>
+</div>
+</div>
+<div id="selected-files" class="selected-files full" aria-live="polite">
+</div>
+<div class="upload-policy-note full">
+<span class="upload-policy-note-mark" aria-hidden="true">◉</span>
+<div>
+<strong>{{ '临时渡轮，按时离港。' if mode == 'temp' else '图片库、相册和图床直链分别管理。' }}</strong>
+<p>{{ '链接到期自动失效，到期后文件会被清理。请及时保存需要保留的内容。' if mode == 'temp' else '相册展示图会清除 EXIF/GPS。原图保留；上传不会自动加入公共相册。' if is_image else '未开启直链时不会获得公开下载地址。相册展示需要另行选择并授权。' }}</p>
+</div>
+</div>
+{% if mode == 'temp' %}<input type="hidden" name="purpose" value="temp">
+<fieldset class="full ttl-options"><legend>有效期</legend><div class="choice-cards">
+{% for value,label in [('3600','1 小时'),('21600','6 小时'),('86400','24 小时'),('259200','3 天'),('604800','7 天')] %}
+<label class="choice-card"><input type="radio" name="ttl_seconds" value="{{ value }}" {{ 'checked' if value == '86400' else '' }}><strong>{{ label }}后离港</strong><small>到期后链接失效，文件清理</small></label>
+{% endfor %}</div></fieldset>
+{% elif is_image %}<input type="hidden" name="purpose" value="image">
+{% else %}<label class="field full">文件用途<select name="purpose">{% for v in ['other','image','api','backup'] %}<option value="{{ v }}" {{ 'selected' if purpose_default == v else '' }}>{{ purpose_label(v) }}</option>{% endfor %}</select>
+</label>{% endif %}
+<label class="switch full">
+<input id="generate-link" type="checkbox" name="generate_link" value="1">
+<span>
+<strong>上传后开启公开直链</strong>
+<small>开启后，拿到直链的人可以查看或下载原始文件；此开关不会使图片进入公共相册。私有文件无法开启直链。</small>
+</span>
+</label>
+<details class="field full">
+<summary>高级设置{{ ' · 文件可见性' if is_image else ' · 可见性与存储' }}</summary>
+<div class="form-grid">
+{% if mode != 'temp' %}<label class="field">原文件可见性<select name="visibility">
+<option value="unlisted" selected>不列出 · 仅主动开启直链后可分享</option>
+<option value="private">私有 · 禁止公开直链</option>
+<option value="public">公开 · 仍需单独开启直链</option>
+</select>
+<small>相册的可见范围在相册中单独设置。</small>
+</label>{% endif %}
+{% if not is_image %}<label class="field">存储策略<select name="storage_policy">
+<option value="auto">自动选择</option>
+<option value="cos">cos_tky</option>
+<option value="local_temp">local_temp</option>
+</select>
+</label>{% endif %}
+</div>
+</details>
+<div id="upload-message" class="upload-message full" role="status" hidden>
+</div>
+<div class="upload-actions full">
+<button id="upload-button" class="btn btn-primary" type="submit">开始上传</button>
+<button id="clear-files" class="btn " type="button" hidden>清空选择</button>
+</div>
+<div id="upload-results" class="upload-results full" aria-live="polite">
+</div>
+<noscript>
+<p class="muted full small">选择文件并点击「开始上传」即可提交；多文件上传在处理后返回结果页面。</p>
+</noscript>
+</form>{% endif %}</section>{% endblock %}
+

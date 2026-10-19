@@ -1,0 +1,101 @@
+{% extends "layouts/admin.html" %}
+{% from "macros/ui.html" import notice %}
+{% block title %}{{ file.original_filename }} · 站点文件管理 · LuomoFile{% endblock %}
+{% block content %}
+<nav class="crumbs">
+<a href="/admin/files">站点文件管理</a>
+<span aria-hidden="true">/</span>
+<span>文件详情</span>
+</nav>
+<section class="page-head">
+<div class="titles">
+<p class="berth">Administration / original file</p>
+<h1 class="user-content">{{ file.original_filename }}</h1>
+<p>{{ human_size(file.size_bytes) }} · {{ status_label(file.status) }} · {{ human_date(file.uploaded_at) }}</p>
+</div>
+</section>{{ notice(message, error) }}
+<section class="grid two">
+<article class="panel">
+<h2>文件信息</h2>
+<dl class="kv">
+<div>
+<dt>上传者</dt>
+<dd>{{ file.owner_username or '—' }}</dd>
+</div>
+<div>
+<dt>原文件范围</dt>
+<dd>{{ visibility_label(file.visibility) }}</dd>
+</div>
+<div>
+<dt>用途</dt>
+<dd>{{ purpose_label(file.purpose) }}</dd>
+</div>
+<div>
+<dt>MIME 类型</dt>
+<dd>{{ file.mime_type }}</dd>
+</div>
+<div>
+<dt>存储后端</dt>
+<dd>{{ 'cos_tky' if file.storage_backend == 'cos' else file.storage_backend }}</dd>
+</div>
+</dl>
+<details class="detail-extra">
+<summary>存储对象标识</summary>
+<dl class="kv">
+<div>
+<dt>文件 ID</dt>
+<dd>
+<code>{{ file.file_id }}</code>
+</dd>
+</div>
+<div>
+<dt>对象键</dt>
+<dd>
+<code>{{ file.object_key }}</code>
+</dd>
+</div>
+</dl>
+</details>
+</article>
+<article class="panel">
+<h2>公开直链</h2>
+<p class="muted">直链读取原始文件，与相册展示的授权独立。</p>
+<span class="badge" data-tone="{{ 'ok' if file.link_enabled else '' }}">{{ '已开启' if file.link_enabled else '未开启' }}</span>{% if file.link_enabled and file.public_url %}<p>
+<a id="direct-link" href="{{ file.public_url }}" target="_blank" rel="noopener">{{ file.public_url }}</a>
+</p>
+<div class="btn-row">
+<button class="btn " type="button" data-copy-target="direct-link">复制直链</button>
+<form method="post" action="/files/{{ file.file_id }}/link/revoke" data-confirm="确认吊销此文件公开直链？">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<input type="hidden" name="return_to" value="{{ request.url.path }}">
+<button class="btn btn-danger" type="submit">吊销直链</button>
+</form>
+</div>{% elif file.visibility != 'private' %}<form class="btn-row" method="post" action="/files/{{ file.file_id }}/link/generate">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<input type="hidden" name="return_to" value="{{ request.url.path }}">
+<button class="btn " type="submit">开启直链</button>
+</form>{% else %}<p class="muted">私有文件不能开启公开直链。</p>{% endif %}</article>
+</section>
+<section class="panel">
+<h2>原文件可见性</h2>
+<p class="muted">此设置不改变相册浏览范围。转为私有时公开直链会停用。</p>
+<form class="form-grid" method="post" action="/admin/files/{{ file.file_id }}/visibility">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<label class="field">可见性<select name="visibility">{% for v in ['public','unlisted','private'] %}<option value="{{ v }}" {{ 'selected' if file.visibility == v else '' }}>{{ visibility_label(v) }}</option>{% endfor %}</select>
+</label>
+<div class="btn-row">
+<button class="btn " type="submit">保存可见性</button>
+</div>
+</form>
+</section>
+<section class="panel danger-zone">
+<h2>删除原始文件</h2>
+<p class="muted">公开直链和所有相册中的关联展示将立即失效。</p>
+<details>
+<summary>删除此文件</summary>
+<form method="post" action="/admin/files/{{ file.file_id }}/delete" data-confirm="确认删除原始文件？所有相册关联和直链将立即失效。">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<button class="btn btn-danger" type="submit">确认删除原始文件</button>
+</form>
+</details>
+</section>{% endblock %}

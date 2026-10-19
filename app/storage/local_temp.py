@@ -14,7 +14,7 @@ class LocalTempBackend(StorageBackend):
 
     def _path(self, object_key: str) -> Path:
         target = (self.root / object_key).resolve()
-        if not str(target).startswith(str(self.root.resolve())):
+        if not target.is_relative_to(self.root.resolve()):
             raise ValueError("Invalid object key")
         return target
 
@@ -25,11 +25,13 @@ class LocalTempBackend(StorageBackend):
 
     def delete_file(self, object_key: str) -> None:
         path = self._path(object_key)
-        if path.exists():
-            path.unlink()
+        path.unlink(missing_ok=True)
 
     def get_public_url(self, object_key: str) -> str | None:
         return None
+
+    def open_reader(self, object_key: str):
+        return self._path(object_key).open("rb")
 
     def exists(self, object_key: str) -> bool:
         return self._path(object_key).exists()

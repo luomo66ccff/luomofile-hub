@@ -1,0 +1,21 @@
+{% extends "layouts/base.html" %}
+{% from "macros/ui.html" import album_card, pagination as pager %}
+{% block title %}发现相册 · LuomoFile{% endblock %}
+{% block content %}
+<section class="page-head">
+<div class="titles">
+<p class="berth">The shared collection</p>
+<h1>每个人眼中的世界。</h1>
+<p>发现主动公开的个人故事，也走进大家一起记录的共建相册。</p>
+</div>
+<a class="btn btn-primary" href="{{ '/albums/new' if user and user.status == 'active' else '/login?next=/albums/new' }}">创建相册</a>
+</section>
+<div class="toolbar"><form class="searchbox" method="get" action="/gallery"><svg aria-hidden="true"><use href="#i-search"/></svg><input aria-label="搜索相册" type="search" name="q" value="{{ filters.q }}" placeholder="相册标题或简介"><input type="hidden" name="kind" value="{{ filters.kind or '' }}"><button class="visually-hidden" type="submit">搜索</button></form>
+<nav class="chips" aria-label="相册类型">{% for v,label in [('', '全部相册'),('personal','个人相册'),('shared','共建相册')] %}<a class="chip" aria-current="{{ 'true' if filters.kind == v or (not v and (not filters.kind or filters.kind == 'all')) else 'false' }}" href="{{ request.url.include_query_params(kind=v,page=1) }}">{{ label }}</a>{% endfor %}</nav><label class="toolbar-sort" data-collection-tools hidden><span class="visually-hidden">本页排序</span><select data-collection-sort aria-label="本页排序"><option value="default" selected>默认顺序</option><option value="name">本页按名称</option></select></label><div class="view-toggle" role="group" aria-label="展示视图" data-collection-tools hidden><button type="button" data-collection-view="grid" aria-pressed="true" aria-label="网格"><svg aria-hidden="true"><use href="#i-grid"/></svg></button><button type="button" data-collection-view="list" aria-pressed="false" aria-label="列表"><svg aria-hidden="true"><use href="#i-list"/></svg></button></div></div>
+<section class="postcards" data-collection>{% for a in albums %}{{ album_card(a) }}{% else %}<div class="empty full">
+<div class="empty-mark" aria-hidden="true">◫</div>
+<h2>{{ '没有找到这样的相册' if filters.q or filters.kind else '留一个位置，等故事发生' }}</h2>
+<p>{{ '换个关键词，或查看全部相册。' if filters.q or filters.kind else '暂时没有公开发布的相册。每本相册都由创建者主动分享，旧图片不会自动出现在这里。' }}</p>
+<div class="btn-row">{% if filters.q or filters.kind %}<a class="btn " href="/gallery">查看全部</a>{% else %}<a class="btn btn-primary" href="/albums/new">创建一本相册</a>{% endif %}</div>
+</div>{% endfor %}</section>
+{{ pager(pagination, request) }}{% endblock %}

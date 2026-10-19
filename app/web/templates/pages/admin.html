@@ -1,0 +1,54 @@
+{% extends "layouts/admin.html" %}
+{% from "macros/ui.html" import notice %}
+{% block title %}管理概览 · LuomoFile{% endblock %}
+{% block content %}
+<section class="page-head">
+<div class="titles">
+<p class="berth">Site administration</p>
+<h1>管理概览</h1>
+<p>站点维护集中在这里，文件、容量、密钥和订阅各有独立入口。</p>
+</div>
+<form method="post" action="/admin/cleanup/run" data-confirm="运行到期文件清理？到期原文件及其关联展示会被移除。">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<button class="btn " type="submit">运行到期清理</button>
+</form>
+</section>{{ notice(message, error) }}
+<section class="grid two">
+<a class="panel link" href="/admin/files">
+<p class="berth">01 / Files</p>
+<h2>文件管理 <span aria-hidden="true">↗</span>
+</h2>
+<p>搜索全站活动文件，调整可见性与分享链接。</p>
+</a>
+<a class="panel link" href="/admin/storage">
+<p class="berth">02 / Storage</p>
+<h2>存储状态 <span aria-hidden="true">↗</span>
+</h2>
+<p>查看后端已用容量与容量占比。</p>
+</a>
+<a class="panel link" href="/admin/api-keys">
+<p class="berth">03 / Access</p>
+<h2>API 密钥 <span aria-hidden="true">↗</span>
+</h2>
+<p>为用户创建指定范围的密钥，并管理吊销状态。</p>
+</a>
+<a class="panel link" href="/admin/subscriptions">
+<p class="berth">04 / Subscriptions</p>
+<h2>订阅管理 <span aria-hidden="true">↗</span>
+</h2>
+<p>独立签发受保护链接，查看进度与节点确认状态。</p>
+</a>
+</section>
+<section class="grid two">
+<article class="panel">
+<h2>最近上传记录</h2>{% for f in files %}<div class="row">
+<a href="/admin/files/{{ f.file_id }}" class="truncate" title="{{ f.original_filename }}">{{ f.original_filename }}</a>
+<span class="badge" data-tone="{{ 'ok' if f.status == 'active' else '' }}">{{ status_label(f.status) }}</span>
+</div>{% else %}<p class="muted">暂无上传记录。</p>{% endfor %}</article>
+<article class="panel">
+<h2>最近清理任务</h2>{% for j in jobs %}<div class="row">
+<span>{{ human_date(j.started_at) }}</span>
+<span class="badge">{{ status_label(j.status) }}</span>
+<span class="muted">已清理 {{ j.deleted_count }} 个</span>
+</div>{% else %}<p class="muted">尚未运行清理任务。</p>{% endfor %}</article>
+</section>{% endblock %}

@@ -33,6 +33,11 @@ class R2Backend(StorageBackend):
     def get_public_url(self, object_key: str) -> str | None:
         return f"{settings.r2_public_base_url}/{object_key}" if settings.r2_public_base_url else None
 
+    def open_reader(self, object_key: str):
+        if not self.client or not settings.r2_bucket:
+            raise RuntimeError("R2 backend is not configured for private reads")
+        return self.client.get_object(Bucket=settings.r2_bucket, Key=object_key)["Body"]
+
     def exists(self, object_key: str) -> bool:
         if not self.client or not settings.r2_bucket:
             return False

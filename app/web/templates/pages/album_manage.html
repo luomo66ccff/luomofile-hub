@@ -1,0 +1,196 @@
+{% extends "layouts/base.html" %}
+{% from "macros/ui.html" import notice, policy_label, membership_actions with context %}
+{% block title %}管理相册 · {{ album.title }} · LuomoFile{% endblock %}
+{% block content %}
+<nav class="crumbs">
+<a href="/albums">我的相册</a>
+<span aria-hidden="true">/</span>{% if capabilities.can_view %}<a href="/albums/{{ album.album_id }}">{{ album.title }}</a>{% else %}<span>{{ album.title }}</span>{% endif %}<span aria-hidden="true">/</span>
+<span>管理</span>
+</nav>
+<section class="page-head">
+<div class="titles">
+<p class="berth">Album studio</p>
+<h1>整理「{{ album.title }}」</h1>
+<p>管理相册内容、封面与投稿。{{ '你拥有此相册，可设置范围和邀请成员。' if capabilities.is_owner else '你的管理权限适用于相册内容。' }}</p>
+</div>{% if capabilities.can_contribute %}<a class="btn btn-primary" href="/albums/{{ album.album_id }}/contribute">添加照片</a>{% endif %}</section>
+{{ notice(message, error) }}
+<nav class="tabs" aria-label="管理区域">
+<a href="#album-settings">相册信息</a>
+<a href="#album-content">照片整理</a>{% if capabilities.can_review %}<a href="#album-review">投稿审核 <span class="subtle">{{ pending_items|length }}</span>
+</a>{% endif %}
+{% if capabilities.is_owner %}<a href="#album-members">成员与邀请</a>{% endif %}</nav>
+<section class="panel" id="album-settings">
+<p class="berth">About the collection</p>
+<h2>相册信息</h2>
+<form class="form-grid" method="post" action="/albums/{{ album.album_id }}/settings">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<input type="hidden" name="expected_version" value="{{ album.acl_version }}">
+<label class="field full">相册名称<input name="title" value="{{ album.title }}" required maxlength="120">
+</label>
+<label class="field full">简介<textarea name="description" maxlength="2000">{{ album.description or '' }}</textarea>
+</label>
+{% if capabilities.is_owner %}<label class="field">谁可以浏览<select name="view_policy">{% for v,label in [('restricted','仅受邀且有浏览权限的成员'),('authenticated','所有已激活账户'),('public','所有人 · 无需登录')] %}<option value="{{ v }}" {{ 'selected' if album.view_policy == v else '' }}>{{ label }}</option>{% endfor %}</select>
+<small>扩大相册范围不会扩大其他上传者此前的授权。未同意扩大范围的照片将不会展示。</small>
+</label>{% if album.kind == 'shared' %}<label class="field">谁可以投稿<select name="contribute_policy">
+<option value="restricted" {{ 'selected' if album.contribute_policy == 'restricted' else '' }}>仅受邀且有投稿权限的成员</option>
+<option value="authenticated" {{ 'selected' if album.contribute_policy == 'authenticated' else '' }}>所有已激活账户</option>
+</select>
+<small>投稿权与浏览权独立，不自动相互授予。</small>
+</label>
+<label class="switch">
+<input type="checkbox" name="review_required" value="1" {{ 'checked' if album.review_required else '' }}>
+<span>
+<strong>投稿需审核</strong>
+<small>管理者审核通过后，照片才会展示。</small>
+</span>
+</label>{% endif %}<label class="switch">
+<input type="checkbox" name="listed" value="1" {{ 'checked' if album.listed else '' }}>
+<span>
+<strong>加入公共相册发现目录</strong>
+<small>仅所有人可浏览的相册能进入发现目录。</small>
+</span>
+</label>{% endif %}
+<div class="btn-row full">
+<button class="btn btn-primary" type="submit">保存相册信息</button>
+</div>
+</form>
+</section>
+<section class="panel">
+<p class="berth">First impression</p>
+<h2>相册封面</h2>
+<form class="form-grid" method="post" action="/albums/{{ album.album_id }}/cover">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<label class="field">封面照片<select name="file_id">
+<option value="">不设置封面</option>{% for p in items %}<option value="{{ p.file_id }}" {{ 'selected' if album.cover_file_id == p.file_id else '' }}>{{ p.title or p.original_filename }}</option>{% endfor %}</select>
+<small>只从当前有权展示的相册照片中选择。</small>
+</label>
+<div class="btn-row">
+<button class="btn " type="submit">保存封面</button>
+</div>
+</form>
+</section>
+{% if capabilities.can_review %}<section class="panel" id="album-review">
+<p class="berth">Review contributions</p>
+<h2>待审核投稿</h2>{% for p in pending_items %}<article class="manage-item">{% if p.thumb_url %}<img src="{{ p.thumb_url }}" alt="{{ p.original_filename }}" loading="lazy" data-media-image>{% else %}<span class="media-placeholder">待处理</span>{% endif %}<div>
+<strong>{{ p.title or p.original_filename }}</strong>
+<p>{{ p.owner_username }} · 最大授权范围：{{ policy_label(p.audience_cap) }}</p>{% if p.caption %}<p class="photo-caption">{{ p.caption }}</p>{% endif %}</div>
+<div class="btn-row">
+<form method="post" action="/albums/{{ album.album_id }}/items/{{ p.file_id }}/review">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<button class="btn btn-primary" type="submit" name="decision" value="accepted">通过</button>
+<button class="btn btn-ghost" type="submit" name="decision" value="rejected">拒绝</button>
+</form>
+</div>
+</article>{% else %}<p class="muted">没有待审核的照片。</p>{% endfor %}</section>{% endif %}
+<section class="panel" id="album-content">
+<p class="berth">Arrange the story</p>
+<h2>照片整理</h2>
+<p class="muted">调整说明和显示顺序。移出相册只解除关联，原始图片仍归上传者所有。</p>{% for p in items %}<article class="manage-item">{% if p.thumb_url %}<img src="{{ p.thumb_url }}" alt="{{ p.original_filename }}" loading="lazy" data-media-image>{% else %}<span class="media-placeholder">待处理</span>{% endif %}<div>
+<strong>{{ p.title or p.original_filename }}</strong>
+<p>{{ p.owner_username }} · {{ status_label(p.status|default('accepted')) }}</p>
+<details>
+<summary>编辑说明与顺序</summary>
+<form class="form-grid" method="post" action="/albums/{{ album.album_id }}/items/{{ p.file_id }}/edit">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<label class="field full">说明<textarea name="caption" maxlength="2000">{{ p.caption or '' }}</textarea>
+</label>
+<label class="field">顺序<input type="number" name="position" min="0" max="1000000" value="{{ p.position|default(loop.index0) }}">
+</label>
+<div class="btn-row">
+<button class="btn " type="submit">保存</button>
+</div>
+</form>
+</details>
+</div>
+<div class="btn-row">
+<form method="post" action="/albums/{{ album.album_id }}/items/{{ p.file_id }}/remove" data-confirm="将这张照片移出相册？原图会保留。">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<button class="btn btn-danger" type="submit">移出相册</button>
+</form>
+</div>
+</article>{% else %}<div class="empty">
+<h2>相册还在等待照片</h2>
+<p>添加照片后可以在这里调整它们的排列和说明。</p>{% if capabilities.can_contribute %}<a class="btn btn-primary" href="/albums/{{ album.album_id }}/contribute">添加照片</a>{% endif %}</div>{% endfor %}</section>
+{% if capabilities.is_owner %}
+<section class="panel" id="album-members">
+<p class="berth">People behind the album</p>
+<h2>邀请成员</h2>
+<p class="muted">邀请绑定已有账户，由对方本人接受。三项权限独立设置；管理权限不自动赋予浏览或投稿权限。</p>
+<form class="form-grid" method="post" action="/albums/{{ album.album_id }}/invitations">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<label class="field full">用户名<input name="username" maxlength="32" required placeholder="输入对方的 LuomoFile 用户名">
+</label>
+<label class="switch">
+<input type="checkbox" name="can_view" value="1" checked>
+<span>
+<strong>可以浏览</strong>
+<small>查看相册中符合授权范围的照片。</small>
+</span>
+</label>
+<label class="switch">
+<input type="checkbox" name="can_contribute" value="1" {{ 'disabled' if album.kind == 'personal' else '' }}>
+<span>
+<strong>可以投稿</strong>
+<small>{{ '个人相册仅创建者可投稿。' if album.kind == 'personal' else '向相册添加自己的图片。' }}</small>
+</span>
+</label>
+<label class="switch">
+<input type="checkbox" name="can_manage" value="1">
+<span>
+<strong>可以管理内容</strong>
+<small>整理、审核和移出照片，不授予邀请与访问设置权限。</small>
+</span>
+</label>
+<div class="btn-row full">
+<button class="btn btn-primary" type="submit">发送邀请</button>
+</div>
+</form>
+{% if invitations %}<h3 class="section-subtitle">已发出的邀请</h3>{% for inv in invitations %}<div class="row">
+<div class="row-main">
+<strong>{{ inv.username or inv.invitee_username }}</strong>
+<p class="muted small">{{ status_label(inv.status) }} · {{ '可浏览' if inv.can_view else '不可浏览' }} / {{ '可投稿' if inv.can_contribute else '不可投稿' }} / {{ '可管理' if inv.can_manage else '不可管理' }}</p>
+</div>{% if inv.status == 'pending' %}<form method="post" action="/albums/{{ album.album_id }}/invitations/{{ inv.invitation_id }}/revoke" data-confirm="撤销这份邀请？对方将不能再接受它。">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<button class="btn btn-danger btn-sm" type="submit">撤销邀请</button>
+</form>{% endif %}</div>{% endfor %}
+{% endif %}
+</section>
+<section class="panel">
+<h2>成员权限</h2>{% for m in members %}<details class="member-entry">
+<summary>{{ m.username }} <span class="badge" data-tone="{{ 'ok' if m.status == 'active' else '' }}">{{ status_label(m.status) }}</span>
+</summary>
+<form class="form-grid" method="post" action="/albums/{{ album.album_id }}/members/{{ m.user_id }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<label class="switch">
+<input type="checkbox" name="can_view" value="1" {{ 'checked' if m.can_view else '' }}>
+<span>可以浏览</span>
+</label>
+<label class="switch">
+<input type="checkbox" name="can_contribute" value="1" {{ 'checked' if m.can_contribute else '' }} {{ 'disabled' if album.kind == 'personal' else '' }}>
+<span>可以投稿</span>
+</label>
+<label class="switch">
+<input type="checkbox" name="can_manage" value="1" {{ 'checked' if m.can_manage else '' }}>
+<span>可以管理内容</span>
+</label>
+<label class="field">成员状态<select name="status">{% for v,label in [('active','有效成员'),('revoked','移除成员'),('blocked','阻止重新加入')] %}<option value="{{ v }}" {{ 'selected' if m.status == v else '' }}>{{ label }}</option>{% endfor %}</select>
+</label>
+<div class="btn-row full">
+<button class="btn " type="submit">保存成员权限</button>
+</div>
+</form>
+</details>{% else %}<p class="muted">还没有其他成员。</p>{% endfor %}</section>
+<section class="panel danger-zone">
+<h2>删除相册</h2>
+<p class="muted">相册将不再可见，关联关系解除。所有上传者的原始图片仍保留在各自图片库。</p>
+<details>
+<summary>删除「{{ album.title }}」</summary>
+<form method="post" action="/albums/{{ album.album_id }}/delete" data-confirm="确认删除整个相册？所有照片会停止在这里展示，原图不会删除。">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<button class="btn btn-danger" type="submit">确认删除相册</button>
+</form>
+</details>
+</section>
+{% endif %}
+{{ membership_actions(album, capabilities) }}
+{% endblock %}

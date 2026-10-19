@@ -6,6 +6,7 @@ from app.storage.base import BackendInfo, StorageBackend
 from app.storage.cos import CosBackend, CosSvBackend
 from app.storage.local_temp import LocalTempBackend
 from app.storage.r2 import R2Backend
+from app.storage.private_media import PrivateMediaBackend
 
 
 def backend_infos() -> dict[str, BackendInfo]:
@@ -20,6 +21,7 @@ def backend_infos() -> dict[str, BackendInfo]:
             public_base_url=row["public_base_url"],
             max_capacity_bytes=int(row["max_capacity_bytes"] or 0),
             used_bytes_cache=int(row["used_bytes_cache"] or 0),
+            reserved_bytes=int(row["reserved_bytes"] or 0),
         )
         for row in rows
     }
@@ -34,13 +36,15 @@ def get_backend(name: str) -> StorageBackend:
         return CosSvBackend()
     if name == "local_temp":
         return LocalTempBackend()
+    if name == "private_media":
+        return PrivateMediaBackend()
     raise ValueError(f"Unknown backend {name}")
 
 
 def choose_backend(file_size: int, mime_type: str | None, purpose: str, requested_policy: str) -> BackendInfo:
     infos = backend_infos()
     candidates: list[str]
-    if requested_policy in {"r2", "cos", "cos_sv", "local_temp"}:
+    if requested_policy in {"r2", "cos", "cos_sv", "local_temp", "private_media"}:
         candidates = [requested_policy]
     elif purpose == "image" and (mime_type or "").startswith("image/") and file_size <= settings.max_image_bytes:
         candidates = ["r2", "cos_sv", "cos", "local_temp"]

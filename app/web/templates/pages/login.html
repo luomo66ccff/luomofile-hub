@@ -1,0 +1,33 @@
+{% extends "layouts/base.html" %}
+{% block title %}登录 · LuomoFile{% endblock %}
+{% block content %}
+<section class="gangway">
+<div class="boarding-pass"><div class="stub" aria-hidden="true"><span>Gate</span><b>01</b><span>Seat</span><b>—</b><i class="barcode"></i></div><div class="row">LuomoFile · Boarding Pass</div><div class="route">此岸 → 星港</div>
+<p class="row">Welcome back</p>
+<h2 class="pass-heading">回到你的照片与故事。</h2>
+<p>登录后继续整理相册，与朋友一起记录。</p>
+<ul class="auth-aside-list">
+<li>多本相册，收好不同的时刻</li>
+<li>成员共建，各自保留原图所有权</li>
+<li>直链与相册权限独立管理</li>
+</ul>
+</div>
+<section class="gangway-card">
+<h1>登录</h1>
+<p>使用你的 LuomoFile 账户。</p>{% if request.query_params.get('error') %}<div class="notice" data-tone="danger" role="alert">用户名或密码不正确，请再试一次。</div>{% elif error %}<div class="notice" data-tone="danger" role="alert">{{ error }}</div>{% endif %}<form method="post" action="/login">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<input type="hidden" name="next" value="{{ next|default(request.query_params.get('next', '')) }}">
+<label class="field">用户名<input name="username" autocomplete="username" required>
+</label>
+<label class="field">密码<span class="input-with-action">
+<input id="login-password" name="password" type="password" autocomplete="current-password" required>
+<button type="button" data-password-toggle="login-password" aria-pressed="false">显示</button>
+</span>
+</label>
+<button class="btn btn-primary" type="submit">登录</button>
+</form>
+<p class="auth-footnote">还没有账户？<a href="/register">创建账户</a>
+</p>
+</section>
+</section>
+{% endblock %}

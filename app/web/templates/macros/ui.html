@@ -1,0 +1,66 @@
+{% macro file_kind(f) -%}{{ 'image' if f.purpose == 'image' else 'archive' if (f.extension or '')|lower in ['.zip','.rar','.7z'] else 'doc' if (f.extension or '')|lower in ['.pdf','.docx'] else 'code' if (f.extension or '')|lower in ['.yml','.yaml','.json','.toml','.ini','.conf','.sh','.py','.js','.ts'] else 'other' }}{%- endmacro %}
+{% macro file_badges(f) %}<span class="badge" data-tone="{{ 'private' if f.visibility == 'private' else 'public' }}">{{ visibility_label(f.visibility) }}</span><span class="badge" data-tone="{{ 'link' if f.link_enabled else 'private' }}">{{ '直链开启' if f.link_enabled else '未开直链' }}</span>{% endmacro %}
+{% macro icon(name) %}<svg aria-hidden="true"><use href="#i-{{ name }}"/></svg>{% endmacro %}
+{% macro album_card(a) %}
+{% set album_target = '/albums/' ~ a.album_id ~ ('/contribute' if not a.capabilities.can_view and a.capabilities.can_contribute else '/manage' if not a.capabilities.can_view and a.capabilities.can_manage else '') %}
+<article class="postcard"><div class="postcard-stack"><div class="postcard-face">{% if a.cover_url %}<img src="{{ a.cover_url }}" alt="{{ a.title }} 的封面" loading="lazy" decoding="async" data-media-image>{% else %}<div class="postcard-empty">{{ icon('album') }}</div>{% endif %}<span class="stamp">{{ '共建 · ' if a.kind == 'shared' else '' }}{{ a.item_count }} 张</span><span class="postmark"><span>{{ (a.created_at or a.updated_at or '')[5:7] }}月<b>{{ (a.created_at or a.updated_at or '')[8:10] }}</b>{{ (a.created_at or a.updated_at or '')[:4] }}</span></span></div></div>
+<h3><a href="{{ album_target }}">{{ a.title }}</a></h3><div class="meta"><span>{{ a.owner_username }}</span><span class="badge" data-tone="{{ 'public' if a.view_policy == 'public' else 'private' }}">{{ '公开' if a.view_policy == 'public' else '登录可见' if a.view_policy == 'authenticated' else '仅成员' }}</span></div>{% if a.description %}<p class="faint clamp">{{ a.description }}</p>{% endif %}</article>
+{% endmacro %}
+{% macro badge(text, tone='private') %}<span class="badge" data-tone="{{ tone }}">{{ text }}</span>{% endmacro %}
+{% macro copy_field(text) %}<div class="copy-field"><code>{{ text }}</code><button class="btn btn-sm" type="button" data-copy="{{ text }}">复制</button></div>{% endmacro %}
+{% macro field(name,label,value='') %}<label class="field">{{ label }}<input name="{{ name }}" value="{{ value }}"></label>{% endmacro %}
+{% macro empty(title,text) %}<div class="empty"><h3>{{ title }}</h3><p>{{ text }}</p></div>{% endmacro %}
+{% macro file_tag(f) %}
+<article class="tag-card"><div class="tag-top"><span class="tag-kind" data-kind="{{ file_kind(f) }}">{{ (f.extension or 'FILE')|replace('.','') }}</span><span class="tag-code">LF·{{ f.file_id[-4:]|upper }}</span></div><div><h3 class="tag-name"><a href="/files/{{ f.file_id }}">{{ f.original_filename }}</a></h3><div class="tag-meta"><span>{{ human_size(f.size_bytes) }}</span><span>{{ human_date(f.uploaded_at) }}</span></div></div><div class="tag-foot">{{ file_badges(f) }}{% if f.link_enabled and f.public_url %}<button class="btn btn-ghost btn-sm" type="button" data-copy="{{ f.public_url }}">复制</button>{% endif %}</div></article>
+{% endmacro %}
+{% macro file_row(f) %}<tr><td><a href="/files/{{ f.file_id }}">{{ f.original_filename }}</a></td><td>{{ human_size(f.size_bytes) }}</td><td>{{ human_date(f.uploaded_at) }}</td></tr>{% endmacro %}
+{% macro pagination(p, request) %}
+{% if p and p.pages > 1 %}<nav class="pager" aria-label="分页">{% if p.page > 1 %}<a class="btn " href="{{ request.url.include_query_params(page=p.page - 1) }}">上一页</a>{% endif %}<span class="chip">{{ p.page }} / {{ p.pages }} 页 · {{ p.total }} 项</span>{% if p.page < p.pages %}<a class="btn " href="{{ request.url.include_query_params(page=p.page + 1) }}">下一页</a>{% endif %}</nav>{% endif %}
+{% endmacro %}
+{% macro notice(message, error) %}
+{% if error %}<div class="notice" data-tone="danger" role="alert">{{ error }}</div>{% elif message %}<div class="notice" role="status">{{ message }}</div>{% endif %}
+{% endmacro %}
+{% macro policy_label(v) %}{{ {'restricted':'仅受邀成员','authenticated':'已激活账户','public':'所有人'}.get(v,v) }}{% endmacro %}
+{% macro lightbox() %}
+<dialog class="lightbox" aria-label="图片浏览器" data-lightbox>
+<div class="lightbox-bar">
+<span data-lightbox-counter>
+</span>
+<div class="btn-row">
+<a class="btn btn-sm" data-lightbox-open target="_blank" rel="noopener">单独打开</a>
+<button class="btn btn-sm" type="button" data-lightbox-close aria-label="关闭图片浏览器">关闭 ×</button>
+</div>
+</div>
+<div class="lightbox-stage">
+<button class="lightbox-nav prev" type="button" data-lightbox-prev aria-label="上一张">‹</button>
+<img data-lightbox-image alt="">
+<button class="lightbox-nav next" type="button" data-lightbox-next aria-label="下一张">›</button>
+</div>
+<p class="lightbox-caption" data-lightbox-caption>
+</p>
+</dialog>
+{% endmacro %}
+{% macro photo_card(p, album_id) %}
+<article class="photo-entry">
+<a class="photo" href="{{ '/images/' ~ p.file_id if user and (user.id == p.owner_id or user.role == 'admin') else p.preview_url }}" data-detail-label="{{ '查看详情' if user and (user.id == p.owner_id or user.role == 'admin') else '查看图片' }}" data-lightbox-item data-preview="{{ p.preview_url }}" data-caption="{{ p.caption or p.title or p.original_filename }}" data-title="{{ p.title or p.original_filename }}">{% if p.thumb_url %}<img src="{{ p.thumb_url }}" alt="{{ p.title or p.original_filename }}" loading="lazy" decoding="async" {% if p.width and p.height %}width="{{ p.width }}" height="{{ p.height }}"{% endif %} data-media-image>{% else %}<span class="media-placeholder">预览暂不可用</span>{% endif %}</a>
+<div class="image-info">
+<strong>{{ p.title or p.original_filename }}</strong>{% if p.caption %}<p class="photo-caption">{{ p.caption }}</p>{% endif %}<p>{{ p.owner_username }}{% if p.added_at %} · {{ human_date(p.added_at) }}{% endif %}</p>{% if p.allow_original and p.original_url %}<a class="btn btn-ghost btn-sm" href="{{ p.original_url }}">查看原图</a>{% endif %}
+{% if p.can_withdraw %}<form method="post" action="/albums/{{ album_id }}/items/{{ p.file_id }}/remove" data-confirm="撤回这张照片？原始文件会保留在你的图片库。">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<button class="btn btn-ghost btn-sm" type="submit">撤回照片</button>
+</form>{% endif %}</div>
+</article>
+{% endmacro %}
+
+{% macro membership_actions(album, capabilities) %}
+{% if capabilities.is_member and not capabilities.is_owner %}
+<details class="panel"><summary>成员操作</summary>
+<form method="post" action="/albums/{{ album.album_id }}/leave" data-confirm="退出相册后，已贡献的照片仍保留。可先从图片详情撤回自己的贡献。确认退出？">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<p class="muted">退出成员关系不会自动撤回已有投稿。仍可在自己的图片库中撤回贡献。</p>
+<button class="btn btn-danger" type="submit">退出相册</button>
+</form></details>
+{% endif %}
+{% endmacro %}
+
+{% macro file_actions(f) %}<div class="btn-row row-actions"><a class="btn btn-ghost btn-sm" href="/files/{{ f.file_id }}">详情</a>{% if f.link_enabled and f.public_url %}<button class="btn btn-sm" type="button" data-copy="{{ f.public_url }}">复制</button><button class="btn btn-danger btn-sm" type="submit" formaction="/files/{{ f.file_id }}/link/revoke" data-confirm="确认吊销此文件的公开直链？已分享的地址将失效。">吊销</button>{% elif f.status == 'active' and f.visibility != 'private' %}<button class="btn btn-sm" type="submit" formaction="/files/{{ f.file_id }}/link/generate">开启直链</button>{% endif %}<button class="btn btn-danger btn-sm" type="submit" formaction="/files/{{ f.file_id }}/delete" data-confirm="确认删除这个原始文件？所有相册中的关联展示和分享链接都会失效。">删除</button></div>{% endmacro %}

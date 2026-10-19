@@ -1,0 +1,62 @@
+{% extends "layouts/base.html" %}
+{% from "macros/ui.html" import notice %}
+{% block title %}新建相册 · LuomoFile{% endblock %}
+{% block content %}
+<nav class="crumbs">
+<a href="/albums">我的相册</a>
+<span aria-hidden="true">/</span>
+<span>新建相册</span>
+</nav>
+<section class="page-head">
+<div class="titles">
+<p class="berth">Start a story</p>
+<h1>给这段记忆一个名字。</h1>
+<p>先创建相册，再上传照片。初始仅受邀成员可见。</p>
+</div>
+</section>{{ notice(message, error) }}
+<section class="panel">
+<form class="form-grid" method="post" action="/albums/create">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<label class="field full">相册名称<input name="title" required maxlength="120" value="{{ form.get('title', '') }}" placeholder="例如：今年的散步日记">
+</label>
+<label class="field full">简介<textarea name="description" maxlength="2000" placeholder="写下这个相册想记录的事…">{{ form.get('description', '') }}</textarea>
+</label>
+<label class="field">相册类型<select name="kind">
+<option value="personal" {{ 'selected' if form.get('kind', 'personal') == 'personal' else '' }}>个人相册 · 由我投稿</option>
+<option value="shared" {{ 'selected' if form.get('kind') == 'shared' else '' }}>共建相册 · 允许成员投稿</option>
+</select>
+<small>个人相册仅创建者可添加照片。</small>
+</label>
+<label class="field">谁可以浏览<select name="view_policy">
+<option value="restricted" {{ 'selected' if form.get('view_policy', 'restricted') == 'restricted' else '' }}>仅受邀且有浏览权限的成员</option>
+<option value="authenticated" {{ 'selected' if form.get('view_policy') == 'authenticated' else '' }}>所有已激活账户</option>
+<option value="public" {{ 'selected' if form.get('view_policy') == 'public' else '' }}>所有人 · 无需登录</option>
+</select>
+<small>不会开启原图直链，照片需获得上传者对应范围的同意。</small>
+</label>
+<label class="field">共建投稿范围<select name="contribute_policy">
+<option value="restricted" {{ 'selected' if form.get('contribute_policy', 'restricted') == 'restricted' else '' }}>仅受邀且有投稿权限的成员</option>
+<option value="authenticated" {{ 'selected' if form.get('contribute_policy') == 'authenticated' else '' }}>所有已激活账户</option>
+</select>
+<small>仅对共建相册生效，浏览与投稿权限分别设置。</small>
+</label>
+<label class="switch">
+<input type="checkbox" name="review_required" value="1" {{ 'checked' if form.get('review_required', true) else '' }}>
+<span>
+<strong>共建投稿需审核</strong>
+<small>审核通过后才会展示。对个人相册不生效。</small>
+</span>
+</label>
+<label class="switch full">
+<input type="checkbox" name="listed" value="1" {{ 'checked' if form.get('listed', false) else '' }}>
+<span>
+<strong>加入公共相册发现目录</strong>
+<small>仅「所有人可浏览」的相册能被发现。不开启时仍可按已设置的范围分享相册地址。</small>
+</span>
+</label>
+<div class="btn-row full">
+<button class="btn btn-primary" type="submit">创建相册</button>
+<a class="btn btn-ghost" href="/albums">取消</a>
+</div>
+</form>
+</section>{% endblock %}

@@ -30,13 +30,13 @@ def main() -> None:
         assert "upload-dropzone" in text
         assert text.count('type="file"') == 1
         assert "multiple" in text
-        assert 'id="upload-button" class="btn primary" type="button"' in text
+        assert 'id="upload-button" class="btn btn-primary" type="submit"' in text
         file_input_pos = text.index('type="file"')
         file_input_close = text.index(">", file_input_pos)
-        assert "required" not in text[file_input_pos:file_input_close].lower()
-        assert "/static/upload-enhance.js?v=upload-flow-20260620" in text
-        assert 'src="/static/upload-enhance.js?v=upload-flow-20260620" defer' in text
-        assert "/static/upload-enhance.css?v=upload-flow-20260620" in text
+        assert "required" in text[file_input_pos:file_input_close].lower()
+        assert "/static/js/harbor.js?v=" in text
+        assert 'type="module" src="/static/js/harbor.js?v=' in text
+        assert "/static/css/harbor.css?v=" in text and "/static/css/pages.css?v=" in text
         assert 'action="/upload"' in text
         checkbox_pos = text.index('name="generate_link"')
         next_close = text.index(">", checkbox_pos)
@@ -53,20 +53,21 @@ def main() -> None:
         assert temp_page.status_code == 200
         assert 'value="temp"' in temp_page.text
 
-        js = client.get(f"{BASE}/static/upload-enhance.js")
-        css = client.get(f"{BASE}/static/upload-enhance.css")
-        assert js.status_code == 200 and "dataTransfer.files" in js.text
-        assert "DOMContentLoaded" in js.text
-        assert 'uploadButton.addEventListener("click", handleUploadClick)' in js.text
-        assert "selectedFiles.length" in js.text
-        assert 'data.append("file", file, file.name)' in js.text
-        assert 'form.getAttribute("action") || window.location.pathname' in js.text
-        assert 'console.info("[LuomoFile] uploading to:", url)' in js.text
-        assert 'setRowStatus(index, "Uploading...", 1)' in js.text
-        assert "Preparing upload..." in js.text and "Uploading..." in js.text and "Uploaded" in js.text
-        assert "Please choose one or more files." in js.text
-        assert "event.preventDefault();" in js.text
-        assert css.status_code == 200 and ".upload-dropzone" in css.text
+        js = client.get(f"{BASE}/static/js/upload.js")
+        css = client.get(f"{BASE}/static/css/harbor.css")
+        assert js.status_code == 200 and "e.dataTransfer.files" in js.text
+        assert "new XMLHttpRequest()" in js.text and 'xhr.open("POST",task.url)' in js.text
+        assert 'xhr.setRequestHeader("Accept","application/json")' in js.text
+        assert 'fields.set("csrf_token",document.body.dataset.csrf)' in js.text
+        assert 'data.append(task.fileField,task.file)' in js.text
+        assert 'task.row.dataset.state="uploading"' in js.text
+        assert 'task.row.dataset.state="done"' in js.text and 'task.row.dataset.state="error"' in js.text
+        assert "selected.length>20" in js.text and 'xhr.upload.onprogress' in js.text
+        assert 'input.files.length' in js.text and 'e.preventDefault()' in js.text
+        assert 'queuedForm(form)' in js.text and 'new FormData(form,submitter)' in js.text
+        assert '"/upload","/images/upload","/temp"' in js.text
+        assert 'fileField=form?.querySelector' in js.text and 'modalOpen()' in js.text
+        assert css.status_code == 200 and ".dock-overlay" in css.text and ".tray" in css.text
     print("upload ui smoke ok")
 
 

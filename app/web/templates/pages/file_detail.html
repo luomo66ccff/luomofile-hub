@@ -1,0 +1,113 @@
+{% extends "layouts/base.html" %}
+{% from "macros/ui.html" import notice %}
+{% block title %}{{ file.original_filename }} · 文件详情 · LuomoFile{% endblock %}
+{% block content %}
+<nav class="crumbs">
+<a href="/files">文件库</a>
+<span aria-hidden="true">/</span>
+<span>文件详情</span>
+</nav>
+<section class="page-head">
+<div class="titles">
+<p class="berth">Original file</p>
+<h1 class="user-content">{{ file.original_filename }}</h1>
+<p>{{ purpose_label(file.purpose) }} · {{ human_size(file.size_bytes) }} · {{ status_label(file.status) }}</p>
+</div>{% if file.purpose == 'image' %}<a class="btn " href="/images/{{ file.file_id }}">图片与相册</a>{% endif %}</section>{{ notice(message, error) }}
+<section class="grid two">
+<article class="panel">
+<h2>文件属性</h2>
+<dl class="kv">
+<div>
+<dt>上传时间</dt>
+<dd>{{ human_date(file.uploaded_at) }}</dd>
+</div>
+<div>
+<dt>更新时间</dt>
+<dd>{{ human_date(file.updated_at) }}</dd>
+</div>
+<div>
+<dt>到期时间</dt>
+<dd>{{ human_date(file.expires_at) if file.expires_at else '不过期' }}</dd>
+</div>
+<div>
+<dt>原文件范围</dt>
+<dd>{{ visibility_label(file.visibility) }}</dd>
+</div>
+<div>
+<dt>MIME 类型</dt>
+<dd>{{ file.mime_type }}</dd>
+</div>
+<div>
+<dt>存储后端</dt>
+<dd>{{ 'cos_tky' if file.storage_backend == 'cos' else file.storage_backend }}</dd>
+</div>
+<div>
+<dt>访问次数</dt>
+<dd>{{ file.access_count }}</dd>
+</div>
+<div>
+<dt>最近访问</dt>
+<dd>{{ human_date(file.last_accessed_at) if file.last_accessed_at else '暂无' }}</dd>
+</div>
+</dl>
+<details class="detail-extra">
+<summary>文件标识</summary>
+<dl class="kv">
+<div>
+<dt>文件 ID</dt>
+<dd>
+<code>{{ file.file_id }}</code>
+</dd>
+</div>
+<div>
+<dt>SHA-256 前缀</dt>
+<dd>
+<code>{{ (file.sha256 or '')[:12] }}</code>
+</dd>
+</div>
+</dl>
+</details>
+</article>
+<article class="panel">
+<p class="berth">Direct sharing</p>
+<h2>公开直链</h2>
+<p class="muted">原文件范围与直链开关分别生效。开启后，获得地址的人可以查看或下载原文件。</p>
+<span class="badge" data-tone="{{ 'ok' if file.link_enabled else '' }}">{{ '直链已开启' if file.link_enabled else '未开启直链' }}</span>{% if file.link_enabled and file.public_url %}<p>
+<a id="direct-link" href="{{ file.public_url }}" target="_blank" rel="noopener">{{ file.public_url }}</a>
+</p>
+<div class="btn-row">
+<button class="btn " type="button" data-copy-target="direct-link">复制直链</button>
+<form method="post" action="/files/{{ file.file_id }}/link/revoke" data-confirm="确认吊销直链？使用原地址的分享会失效。">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<input type="hidden" name="return_to" value="{{ request.url.path }}">
+<button class="btn btn-danger" type="submit">吊销直链</button>
+</form>
+</div>{% elif file.visibility != 'private' and file.status == 'active' %}<form class="btn-row" method="post" action="/files/{{ file.file_id }}/link/generate">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<input type="hidden" name="return_to" value="{{ request.url.path }}">
+<button class="btn btn-primary" type="submit">开启公开直链</button>
+</form>{% else %}<p class="muted">{{ '私有文件不能开启公开直链。' if file.visibility == 'private' else '此文件当前不可分享。' }}</p>{% endif %}
+{% if file.purpose == 'image' %}<p class="small muted">相册展示在图片详情中另行授权，此开关不会决定相册是否公开。</p>{% endif %}</article>
+</section>
+<section class="panel">
+<h2>标签</h2>
+<form class="form-grid" method="post" action="/files/{{ file.file_id }}/tags">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<label class="field full">便于查找的标签<input name="tags" value="{{ file.tags or '' }}" placeholder="用逗号分隔，例如 project,travel">
+<small>可在文件库中搜索这些标签。</small>
+</label>
+<button class="btn  full" type="submit">保存标签</button>
+</form>
+</section>
+<section class="panel danger-zone">
+<h2>删除原始文件</h2>
+<p class="muted">删除后，公开直链及所有相册中的关联展示会立即失效。</p>
+<details>
+<summary>删除此文件</summary>
+<form method="post" action="/files/{{ file.file_id }}/delete" data-confirm="确认删除原始文件？公开直链及所有相册中的展示都会失效。">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<button class="btn btn-danger" type="submit">确认删除原始文件</button>
+</form>
+</details>
+</section>
+{% endblock %}

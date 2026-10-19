@@ -1,0 +1,101 @@
+{% extends "layouts/base.html" %}
+{% from "macros/ui.html" import policy_label, pagination as pager, notice, membership_actions with context %}
+
+{% block title %}添加照片 · {{ album.title }} · LuomoFile{% endblock %}
+{% block content %}
+<nav class="crumbs">
+<a href="/albums">我的相册</a>
+<span aria-hidden="true">/</span>
+<span>{{ album.title }}</span>
+</nav>
+<section class="page-head">
+<div class="titles">
+<p class="berth">Contribute your perspective</p>
+<h1>把你的视角放进来。</h1>
+<p>向「{{ album.title }}」添加自己的照片。</p>
+</div>{% if capabilities.can_view %}<a class="btn " href="/albums/{{ album.album_id }}">返回相册</a>{% endif %}</section>{{ notice(message, error) }}
+<div class="permission-note">
+<span aria-hidden="true">◉</span>
+<p>当前相册对<strong>{{ policy_label(album.view_policy) }}</strong>开放浏览。{{ '投稿需审核通过后展示。' if album.review_required else '符合授权范围的照片会直接展示。' }}你保留原图所有权，可以随时撤回自己的贡献。上传不会自动开启图床直链。</p>
+</div>
+<section class="panel">
+<p class="berth">01 / Upload new photos</p>
+<h2>上传新照片</h2>
+<form id="upload-form" class="form-grid enhanced-upload" data-detail-base="/images/" method="post" action="/albums/{{ album.album_id }}/upload" enctype="multipart/form-data">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<div class="quick-dock upload-dropzone full" id="upload-dropzone" tabindex="0" role="button" aria-controls="file-input" aria-label="选择或拖拽照片">
+<label class="visually-hidden" for="file-input">选择照片</label><input id="file-input" type="file" name="files" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" multiple required aria-describedby="contribution-help">
+<div class="upload-dropzone-inner">
+<svg aria-hidden="true"><use href="#i-anchor"/></svg>
+<div class="upload-dropzone-title">选择照片，或拖到这里</div>
+<div class="upload-dropzone-subtitle">可以一次选择多个照片</div>
+</div>
+</div>
+<p id="contribution-help" class="full hint">可多选。原图保留，展示预览清除 EXIF 与位置信息；请填写说明并确认下方授权后投稿。</p>
+<div id="selected-files" class="selected-files full" aria-live="polite">
+</div>
+<label class="field full">照片说明<textarea name="caption" maxlength="2000" placeholder="写下这些照片的共同说明">{{ form.get('caption', '') }}</textarea>
+</label>
+<label class="field">同意的最大浏览范围<select name="audience_cap">{% for v,label in [('restricted','仅受邀成员'),('authenticated','已激活账户'),('public','所有人')] %}<option value="{{ v }}" {{ 'selected' if form.get('audience_cap', album.view_policy) == v else '' }}>{{ label }}</option>{% endfor %}</select>
+<small>选择更窄范围时，照片可能暂不展示。相册未来扩大范围不会扩大你的授权。</small>
+</label>
+<label class="switch">
+<input type="checkbox" name="allow_original" value="1">
+<span>
+<strong>允许相册读者查看原图</strong>
+<small>原图可能含拍摄设备、时间、GPS 等信息。不勾选时只提供清除这些信息的展示图。</small>
+</span>
+</label>
+<label class="switch full">
+<input type="checkbox" name="consent" value="1" required>
+<span>
+<strong>确认将我的照片加入此相册，并同意所选浏览范围</strong>
+<small>相册移除照片不会删除原始文件；我可以在图片详情调整授权或撤回。</small>
+</span>
+</label>
+<div id="upload-message" class="upload-message full" role="status" hidden>
+</div>
+<div class="upload-actions full">
+<button id="upload-button" class="btn btn-primary" type="submit">上传并投稿</button>
+<button id="clear-files" class="btn " type="button" hidden>清空选择</button>
+</div>
+<div id="upload-results" class="upload-results full" aria-live="polite">
+</div>
+</form>
+</section>
+<section class="panel">
+<p class="berth">02 / Choose from your library</p>
+<h2>选择我的已有图片</h2>{% if images %}<form method="post" action="/albums/{{ album.album_id }}/items" data-requires-selection>
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<div class="image-picker">{% for p in images %}<label class="image-choice">
+<input type="checkbox" name="file_ids" value="{{ p.file_id }}" aria-label="选择 {{ p.original_filename }}">{% if p.thumb_url %}<img src="{{ p.thumb_url }}" alt="{{ p.original_filename }}" loading="lazy" data-media-image>{% else %}<span class="media-placeholder">预览暂不可用</span>{% endif %}<span>{{ p.original_filename }}</span>
+</label>{% endfor %}</div>
+<div class="form-grid" data-gap-top>
+<label class="field full">照片说明<textarea name="caption" maxlength="2000">{{ form.get('caption', '') }}</textarea>
+</label>
+<label class="field">同意的最大浏览范围<select name="audience_cap">{% for v,label in [('restricted','仅受邀成员'),('authenticated','已激活账户'),('public','所有人')] %}<option value="{{ v }}" {{ 'selected' if form.get('audience_cap', album.view_policy) == v else '' }}>{{ label }}</option>{% endfor %}</select>
+</label>
+<label class="switch">
+<input type="checkbox" name="allow_original" value="1">
+<span>
+<strong>允许读者查看原图</strong>
+<small>原图可能包含拍摄位置等信息。</small>
+</span>
+</label>
+<label class="switch full">
+<input type="checkbox" name="consent" value="1" required>
+<span>
+<strong>确认加入此相册，并同意所选浏览范围</strong>
+<small>只选择你拥有的照片。不会复制原图，也不会改变图床直链状态。</small>
+</span>
+</label>
+<button class="btn btn-primary full" type="submit">加入选中照片</button>
+</div>
+</form>{% else %}<div class="empty">
+<h2>暂时没有可选择的图片</h2>
+<p>你可以用上方表单上传新照片。</p>
+</div>{% endif %}{{ pager(pagination, request) }}</section>
+{{ membership_actions(album, capabilities) }}
+{% endblock %}
+
+

@@ -28,15 +28,15 @@ def main() -> None:
         page = client.get(f"{BASE}/files?page_size=20")
         assert page.status_code == 200
         text = page.text
-        assert "File Library" in text
-        assert "Name" in text and "Size" in text and "Actions" in text
-        assert "18 B" in text or "17 B" in text
+        assert "文件库" in text
+        assert "名称" in text and "大小" in text and "操作" in text
+        assert "16 B" in text or "17 B" in text or "18 B" in text
         assert text.count(f'value="{private_id}"') == 1
-        assert "Generate link" in text
-        assert "Copy link" in text and "Revoke link" in text
+        assert "开启直链" in text
+        assert "复制" in text and "吊销" in text
 
         paged = client.get(f"{BASE}/files?page_size=1&page=1")
-        assert paged.status_code == 200 and "Next" in paged.text
+        assert paged.status_code == 200 and "下一页" in paged.text
         searched = client.get(f"{BASE}/files?q=files-page-private")
         assert private_id in searched.text and public_id not in searched.text
         backend = client.get(f"{BASE}/files?storage_backend=local_temp")

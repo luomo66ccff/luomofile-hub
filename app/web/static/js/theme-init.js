@@ -1,0 +1,2 @@
+/* Synchronous before styles: no theme flash, tolerates disabled storage. */
+(() => { try { const theme = localStorage.getItem("harbor-theme"); if (["dark", "light"].includes(theme)) document.documentElement.dataset.theme = theme; } catch {} })();

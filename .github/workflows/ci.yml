@@ -17,3 +17,11 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python -m compileall -q app scripts
       - run: python -c "from app.main import app; assert app.title"
+      - name: tests and smoke tests
+        run: |
+          set -e
+          for t in scripts/test_*.py scripts/smoke_test*.py; do
+            echo "::group::$t"
+            python "$t"
+            echo "::endgroup::"
+          done

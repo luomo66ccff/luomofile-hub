@@ -1,0 +1,21 @@
+{% extends "layouts/base.html" %}
+{% block title %}邮箱验证 · LuomoFile{% endblock %}
+{% block content %}
+<section class="gangway">
+<div class="boarding-pass"><div class="stub" aria-hidden="true"><span>Gate</span><b>01</b><span>Seat</span><b>—</b><i class="barcode"></i></div><div class="row">LuomoFile · Boarding Pass</div><div class="route">此岸 → 星港</div>
+<p class="row">Email verification</p>
+<h2 class="pass-heading">确认你的邮箱。</h2>
+<p>手动确认后即可上传照片、建立相册和参与共建。</p>
+</div>
+<section class="gangway-card">
+<h1>{{ '完成邮箱验证' if valid else '验证链接暂不可用' }}</h1>
+<p>{{ message }}</p>{% if valid %}<form method="post" action="/verify-email">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<input type="hidden" name="token" value="{{ token }}">
+<button class="btn btn-primary" type="submit">确认并验证邮箱</button>
+</form>{% else %}<a class="btn btn-primary" href="/register">重新获取验证邮件</a>{% endif %}<p class="auth-footnote">
+<a href="/login">返回登录</a> · <a href="/gallery">浏览公共相册</a>
+</p>
+</section>
+</section>
+{% endblock %}

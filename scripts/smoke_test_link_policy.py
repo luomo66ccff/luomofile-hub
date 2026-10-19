@@ -44,21 +44,28 @@ def main() -> None:
         owner_get = client.get(path_url)
         assert owner_get.status_code == 200 and owner_get.text == "private by default"
 
-        gen = client.post(f"{BASE}/files/{file_id}/link/generate")
+        gen = client.post(f"{BASE}/files/{file_id}/link/generate", headers={"Origin": BASE})
         assert gen.status_code == 303
         detail = client.get(f"{BASE}/api/v1/files/{file_id}", headers={"Authorization": f"Bearer {token}"})
         assert detail.status_code == 200
         row = detail.json()
         assert row["link_enabled"] == 1
-        assert row["public_url"].startswith("https://file.luomo.moe/")
+        assert row["public_url"].startswith(BASE + "/")
         assert not row["public_url"].startswith("http://file.luomo.moe/")
+        from app.config import settings
+        original_base = settings.app_base_url
+        try:
+            object.__setattr__(settings, "app_base_url", "https://file.example.test")
+            assert public_link(file_id, "policy.txt", "other").startswith("https://file.example.test/")
+        finally:
+            object.__setattr__(settings, "app_base_url", original_base)
 
         client.cookies.clear()
         public_path = row["public_url"].replace("https://file.luomo.moe", BASE)
         assert client.get(public_path).status_code == 200
 
         client.cookies.set(SESSION_COOKIE, sign_session(username))
-        revoked = client.post(f"{BASE}/files/{file_id}/link/revoke")
+        revoked = client.post(f"{BASE}/files/{file_id}/link/revoke", headers={"Origin": BASE})
         assert revoked.status_code == 303
         client.cookies.clear()
         assert client.get(public_path).status_code == 404

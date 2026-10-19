@@ -1,0 +1,66 @@
+{% extends "layouts/base.html" %}
+{% block title %}开发者 · LuomoFile{% endblock %}
+{% block content %}
+<section class="page-head">
+<div class="titles">
+<p class="berth">Build with LuomoFile</p>
+<h1>让文件顺着你的代码走。</h1>
+<p>使用范围明确的 API 密钥，将上传、查询与直链管理接入自己的工具。</p>
+</div>
+<a class="btn btn-primary" href="/developer/docs">打开 API 文档 →</a>
+</section>
+<section class="grid two">
+<article class="panel">
+<p class="berth">A small first step</p>
+<h2>上传一张图片</h2>
+<pre class="code">curl -H "Authorization: Bearer lfk_xxx" \
+  -F "file=@example.png" \
+  -F "purpose=image" \
+  -F "generate_link=false" \
+  {{ request.base_url }}api/v1/files/upload</pre>
+<p class="muted">示例使用占位密钥。上传文件不等于公开相册，直链需要独立开启。</p>
+</article>
+<article class="panel">
+<p class="berth">Access with a purpose</p>
+<h2>明确的授权范围</h2>
+<dl class="kv">
+<div>
+<dt>认证方式</dt>
+<dd>Bearer API key</dd>
+</div>
+<div>
+<dt>密钥前缀</dt>
+<dd>
+<code>lfk_…</code>
+</dd>
+</div>
+<div>
+<dt>完整密钥</dt>
+<dd>仅创建成功时显示</dd>
+</div>
+<div>
+<dt>图片所有权</dt>
+<dd>归密钥所属用户</dd>
+</div>
+</dl>
+<div class="btn-row">{% if user and user.role == 'admin' %}<a class="btn " href="/admin/api-keys">管理 API 密钥</a>{% endif %}<a class="btn btn-ghost" href="/developer/docs">查看接口</a>
+</div>
+</article>
+</section>
+<section class="intro-strip">
+<div>
+<span>01 / 接入</span>
+<h2>先按用途授权</h2>
+<p>选择工具需要的 scope，将密钥放进服务端环境。</p>
+</div>
+<div>
+<span>02 / 上传</span>
+<h2>保留一份原始文件</h2>
+<p>按用途上传，再查询元信息和链接状态。</p>
+</div>
+<div>
+<span>03 / 分享</span>
+<h2>主动生成与撤回直链</h2>
+<p>分享动作独立进行，停止使用时吊销链接或密钥。</p>
+</div>
+</section>{% endblock %}

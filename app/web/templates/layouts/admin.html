@@ -1,0 +1,2 @@
+{% extends 'layouts/base.html' %}
+{% block section_nav %}<nav class="tabs" aria-label="管理导航">{% for href, label in [('/admin','概览'),('/admin/files','文件'),('/admin/storage','存储'),('/admin/api-keys','API 密钥'),('/admin/subscriptions','订阅')] %}<a href="{{ href }}" {% if request.url.path == href or (href == '/admin/files' and request.url.path.startswith('/admin/files/')) %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav>{% endblock %}

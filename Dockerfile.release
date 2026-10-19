@@ -1,0 +1,9 @@
+FROM luomofile-hub:subscriptions-t001
+WORKDIR /app
+ENV APP_RELEASE_VERSION=0.4.0-gallery-t001
+COPY requirements.txt requirements.lock ./
+RUN pip install --no-cache-dir -r requirements.txt -c requirements.lock
+COPY app ./app
+COPY scripts ./scripts
+EXPOSE 8791
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8791", "--no-access-log"]

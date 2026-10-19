@@ -1,0 +1,56 @@
+{% extends "layouts/base.html" %}
+{% from "macros/ui.html" import album_card, pagination as pager, notice %}
+{% block title %}我的相册 · LuomoFile{% endblock %}
+{% block content %}
+<section class="page-head">
+<div class="titles">
+<p class="berth">Your collections</p>
+<h1>我的相册</h1>
+<p>收藏自己的时刻，也与朋友一起记录。</p>
+</div>
+<a class="btn btn-primary" href="/albums/new">＋ 新建相册</a>
+</section>
+{{ notice(message, error) }}
+{% if invitations %}<section class="panel">
+<p class="berth">An invitation to create together</p>
+<h2>收到的邀请</h2>{% for invite in invitations %}
+{% if invite.status == 'pending' %}<article class="row">
+<div class="row-main">
+<strong>{{ invite.album_title or invite.title or '相册邀请' }}</strong>
+<p class="muted small">{{ invite.owner_username or invite.inviter_username or '' }} 邀请你加入 · {{ '可浏览' if invite.can_view else '不可浏览' }} / {{ '可投稿' if invite.can_contribute else '不可投稿' }} / {{ '可管理' if invite.can_manage else '不可管理' }}</p>
+</div>
+<div class="btn-row row-actions">
+<form method="post" action="/albums/invitations/{{ invite.invitation_id }}/accept">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<button class="btn btn-primary" type="submit">接受邀请</button>
+</form>
+<form method="post" action="/albums/invitations/{{ invite.invitation_id }}/decline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<button class="btn btn-ghost" type="submit">拒绝</button>
+</form>
+</div>
+</article>{% endif %}
+{% endfor %}</section>{% endif %}
+<nav class="chips" aria-label="我的相册范围">
+<a class="chip" aria-current="{{ 'true' if scope != 'joined' else 'false' }}" href="/albums?scope=mine">我创建的 <span class="subtle">{{ stats.own }}</span>
+</a>
+<a class="chip" aria-current="{{ 'true' if scope == 'joined' else 'false' }}" href="/albums?scope=joined">我参与的 <span class="subtle">{{ stats.joined }}</span>
+</a>
+</nav>
+<section class="panel compact-filter">
+<form method="get" action="/albums">
+<input type="hidden" name="scope" value="{{ scope }}">
+<div class="filter-main">
+<label class="field">查找相册<input type="search" name="q" value="{{ filters.q }}" placeholder="搜索相册标题或简介">
+</label>
+<button class="btn " type="submit">搜索</button>
+</div>
+</form>
+</section>
+<section class="postcards">{% for a in albums %}{{ album_card(a) }}{% else %}<div class="empty full">
+<div class="empty-mark" aria-hidden="true">▤</div>
+<h2>{{ '没有匹配的相册' if filters.q else '还没有参与的相册' if scope == 'joined' else '从一本相册开始' }}</h2>
+<p>{{ '试试其他关键词。' if filters.q else '接受朋友的邀请，或到公共相册看看哪些故事正在开放投稿。' if scope == 'joined' else '可以是散步、旅行，也可以只是今天。一个账户可以创建多本相册。' }}</p>
+<a class="btn btn-primary" href="{{ '/gallery' if scope == 'joined' else '/albums/new' }}">{{ '发现公共相册' if scope == 'joined' else '新建相册' }}</a>
+</div>{% endfor %}</section>
+{{ pager(pagination, request) }}{% endblock %}

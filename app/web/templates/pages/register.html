@@ -1,0 +1,46 @@
+{% extends "layouts/base.html" %}
+{% block title %}注册 · LuomoFile{% endblock %}
+{% block content %}
+<section class="gangway">
+<div class="boarding-pass"><div class="stub" aria-hidden="true"><span>Gate</span><b>01</b><span>Seat</span><b>—</b><i class="barcode"></i></div><div class="row">LuomoFile · Boarding Pass</div><div class="route">此岸 → 星港</div>
+<p class="row">Start your collection</p>
+<h2 class="pass-heading">给每一张照片，<br>留一个位置。</h2>
+<p>创建账户，验证邮箱，开始自己的相册，也参与朋友的故事。</p>
+<ul class="auth-aside-list">
+<li>照片只上传一次，可以加入多个相册</li>
+<li>私密、成员可见或公开，按需要选择</li>
+<li>文件、临时分享与 API 依然随手可用</li>
+</ul>
+</div>
+<section class="gangway-card">
+<h1>创建账户</h1>
+<p>验证邮箱后即可使用上传和共建功能。</p>{% if error %}<div class="notice" data-tone="danger" role="alert">{{ error }}</div>{% endif %}
+{% if message %}<div class="notice" role="status">{{ message }}</div>{% endif %}<form method="post" action="/register">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<label class="field">用户名<input name="username" autocomplete="username" required minlength="3" maxlength="32" pattern="[A-Za-z0-9_.-]+" aria-describedby="username-hint">
+<small id="username-hint">3–32 位字母、数字或 _ . -</small>
+</label>
+<label class="field">邮箱<input type="email" name="email" autocomplete="email" required>
+</label>
+<label class="field">密码<span class="input-with-action">
+<input id="register-password" type="password" name="password" autocomplete="new-password" required minlength="8">
+<button type="button" data-password-toggle="register-password" aria-pressed="false">显示</button>
+</span>
+<small>至少 8 位字符</small>
+</label>
+<button class="btn btn-primary" type="submit">注册并发送验证邮件</button>
+</form>
+<p class="auth-footnote">已有账户？<a href="/login">去登录</a>
+</p>
+<details class="auth-resend">
+<summary>没有收到验证邮件</summary>
+<form method="post" action="/resend-verification">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<label class="field">注册邮箱<input type="email" name="email" autocomplete="email" required>
+</label>
+<button class="btn " type="submit">重新发送验证链接</button>
+</form>
+</details>
+</section>
+</section>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "layouts/base.html" %}
+{% from "macros/ui.html" import notice, file_actions, file_kind, file_badges with context %}
+{% block title %}文件库 · LuomoFile{% endblock %}
+{% block content %}
+<section class="page-head">
+<div class="titles">
+<p class="berth">File tools</p>
+<h1>文件库</h1>
+<p>共 {{ total }} 个匹配文件。原文件的存储、直链和生命周期在这里管理。</p>
+</div>
+<div class="btn-row">
+<a class="btn btn-primary" href="/upload">上传文件</a>{% if user.role == 'admin' %}<a class="btn btn-ghost" href="/files/cleanup/test-files">清理测试文件</a>{% endif %}</div>
+</section>{{ notice(message, error) }}
+{% set grid = request.query_params.get('view') == 'grid' %}
+<section class="compact-filter">
+<form method="get" action="/files">
+<div class="toolbar files-toolbar">
+<label class="searchbox"><svg aria-hidden="true"><use href="#i-search"/></svg><input aria-label="查找文件" type="search" name="q" value="{{ filters.q }}" placeholder="文件名或标签"></label>
+<nav class="chips" aria-label="文件用途">{% for v,label in [('', '全部'),('image','图片'),('temp','临时'),('api','API'),('backup','备份'),('other','其他')] %}<a class="chip" aria-current="{{ 'true' if filters.purpose == v else 'false' }}" href="{{ request.url.include_query_params(purpose=v, page=1) }}">{{ label }}</a>{% endfor %}</nav>
+<label class="toolbar-sort"><span class="visually-hidden">排序</span><select name="sort">{% for v,label in [('uploaded_at','上传时间'),('size_bytes','文件大小'),('access_count','访问次数'),('original_filename','文件名称')] %}<option value="{{ v }}" {{ 'selected' if filters.sort == v else '' }}>{{ label }}</option>{% endfor %}</select>
+</label>
+<div class="view-toggle" role="group" aria-label="文件视图"><a href="{{ request.url.include_query_params(view='list') }}" data-view="list" aria-current="{{ 'false' if grid else 'true' }}" aria-label="列表"><svg aria-hidden="true"><use href="#i-list"/></svg></a><a href="{{ request.url.include_query_params(view='grid') }}" data-view="grid" aria-current="{{ 'true' if grid else 'false' }}" aria-label="货签"><svg aria-hidden="true"><use href="#i-grid"/></svg></a></div>
+<button class="btn btn-sm" type="submit">筛选</button>
+</div>
+<details>
+<summary>更多筛选条件</summary>
+<div class="form-grid">
+{% if user.role == 'admin' %}<label class="field">范围<select name="scope">
+<option value="my" {{ 'selected' if filters.scope != 'all' else '' }}>我的文件</option>
+<option value="all" {{ 'selected' if filters.scope == 'all' else '' }}>全站文件</option>
+</select>
+</label>{% endif %}
+<label class="field">用途<select name="purpose">
+<option value="">全部用途</option>{% for v in ['image','temp','api','backup','other'] %}<option value="{{ v }}" {{ 'selected' if filters.purpose == v else '' }}>{{ purpose_label(v) }}</option>{% endfor %}</select>
+</label>
+<label class="field">原文件可见性<select name="visibility">
+<option value="">全部</option>{% for v in ['public','unlisted','private'] %}<option value="{{ v }}" {{ 'selected' if filters.visibility == v else '' }}>{{ visibility_label(v) }}</option>{% endfor %}</select>
+</label>
+<label class="field">状态<select name="status">{% for v in ['active','expired','deleted','disabled','all'] %}<option value="{{ v }}" {{ 'selected' if filters.status == v else '' }}>{{ '全部状态' if v == 'all' else status_label(v) }}</option>{% endfor %}</select>
+</label>
+<label class="field">存储后端<select name="storage_backend">
+<option value="">全部后端</option>{% for v in ['r2','cos','local_temp'] %}<option value="{{ v }}" {{ 'selected' if filters.storage_backend == v else '' }}>{{ 'cos_tky' if v == 'cos' else v }}</option>{% endfor %}</select>
+</label>
+<label class="field">直链<select name="link_enabled">
+<option value="">全部</option>
+<option value="1" {{ 'selected' if filters.link_enabled == '1' else '' }}>已开启</option>
+<option value="0" {{ 'selected' if filters.link_enabled == '0' else '' }}>未开启</option>
+</select>
+</label>
+
+<label class="field">顺序<select name="order">
+<option value="desc" {{ 'selected' if filters.order == 'desc' else '' }}>降序</option>
+<option value="asc" {{ 'selected' if filters.order == 'asc' else '' }}>升序</option>
+</select>
+</label>
+<label class="field">每页数量<select name="page_size">{% for v in [20,50,100] %}<option value="{{ v }}" {{ 'selected' if filters.page_size == v else '' }}>{{ v }} 项</option>{% endfor %}</select>
+</label>
+</div>
+</details>
+</form>
+</section>
+<form method="post" id="files-bulk-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<input type="hidden" name="return_to" value="/files">
+{% set grid = request.query_params.get('view') == 'grid' %}
+
+
+{% if grid %}<label class="cluster"><input type="checkbox" id="select-all-page" aria-label="选择本页全部文件">选择本页</label><section class="tags cargo-grid" aria-label="文件货签">{% for f in files %}<article class="tag-card"><label class="tag-select"><input type="checkbox" name="file_ids" value="{{ f.file_id }}" aria-label="选择 {{ f.original_filename }}"></label><div class="tag-top"><span class="tag-kind" data-kind="{{ file_kind(f) }}">{{ (f.extension or 'FILE')|replace('.','') }}</span><span class="tag-code">LF·{{ f.file_id[-4:]|upper }}</span></div>{% if f.purpose == 'image' and f.status == 'active' %}<img class="tag-thumb" src="/media/images/{{ f.file_id }}/thumb" alt="{{ f.original_filename }}" loading="lazy">{% endif %}<div><h3 class="tag-name"><a href="/files/{{ f.file_id }}">{{ f.original_filename }}</a></h3><div class="tag-meta"><span>{{ human_size(f.size_bytes) }}</span><span>{{ human_date(f.uploaded_at) }}</span></div></div><div class="tag-foot">{{ file_badges(f) }}{{ file_actions(f) }}</div></article>{% else %}<div class="empty"><h3>没有匹配的文件</h3><p>调整筛选条件，或上传新文件。</p><a class="btn btn-primary" href="/upload">上传文件</a></div>{% endfor %}</section>
+{% else %}<div class="ledger-wrap"><table class="ledger"><thead><tr><th><input type="checkbox" id="select-all-page" aria-label="选择本页全部文件"><noscript><span>逐项选择</span></noscript></th><th>名称</th><th>大小</th><th>状态</th><th>上传</th><th>操作</th></tr></thead><tbody>{% for f in files %}<tr><td class="select-cell"><input type="checkbox" name="file_ids" value="{{ f.file_id }}" aria-label="选择 {{ f.original_filename }}"></td><td><div class="name-cell"><span class="tag-kind" data-kind="{{ file_kind(f) }}">{{ (f.extension or 'FILE')|replace('.','') }}</span><div><a href="/files/{{ f.file_id }}">{{ f.original_filename }}</a><div class="faint mono">LF·{{ f.file_id[-4:]|upper }}</div></div></div></td><td data-label="大小" class="num">{{ human_size(f.size_bytes) }}</td><td data-label="状态">{{ file_badges(f) }}</td><td data-label="上传" class="faint">{{ human_date(f.uploaded_at) }}</td><td>{{ file_actions(f) }}</td></tr>{% else %}<tr><td colspan="6"><div class="empty"><h3>没有匹配的文件</h3><p>调整筛选条件，或上传新文件。</p><a class="btn btn-primary" href="/upload">上传文件</a></div></td></tr>{% endfor %}</tbody></table></div>{% endif %}
+{% if files %}<div class="bulk-bar" data-bulk-bar>
+<span>已选 <strong data-selected-count>0</strong> 件</span>
+<button class="btn" type="submit" formaction="/files/bulk/revoke-links" data-confirm="确认吊销选中文件的直链？">撤回直链</button>
+<button class="btn btn-danger" type="submit" formaction="/files/bulk/delete" data-confirm="确认删除所有选中的原始文件？相关相册展示和直链都会失效。">删除选中</button>
+<button class="btn btn-sm" type="button" data-selection-clear>取消</button>
+</div>{% endif %}</form>
+<nav class="pager" aria-label="文件分页">{% if has_prev %}<a class="btn " href="/files?{{ request.url.include_query_params(page=page - 1).query }}">上一页</a>{% endif %}<span class="chip">第 {{ page }} 页</span>{% if has_next %}<a class="btn " href="/files?{{ request.url.include_query_params(page=page + 1).query }}">下一页</a>{% endif %}</nav>{% endblock %}

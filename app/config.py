@@ -41,10 +41,38 @@ class Settings:
     smtp_use_ssl: bool = _bool("SMTP_USE_SSL", True)
     email_verification_ttl_seconds: int = _int("EMAIL_VERIFICATION_TTL_SECONDS", 86400)
     internal_token: str = _env("LUOMOFILE_INTERNAL_TOKEN", "")
-    app_version: str = _env("APP_VERSION", "0.1.0")
+    app_version: str = _env("APP_RELEASE_VERSION", _env("APP_VERSION", "0.4.0-gallery-t001"))
+    subscription_token_encryption_secret: str = _env(
+        "SUBSCRIPTION_TOKEN_ENCRYPTION_SECRET", _env("SESSION_SECRET", "")
+    )
+    subscription_identity_secret: str = _env("SUBSCRIPTION_IDENTITY_SECRET", "")
+    subscription_identity_sync_enabled: bool = _bool("SUBSCRIPTION_IDENTITY_SYNC_ENABLED", False)
+    subscription_identity_ssh_key: str = _env(
+        "SUBSCRIPTION_IDENTITY_SSH_KEY", "/run/secrets/proxy_identity_sync_key"
+    )
+    subscription_identity_known_hosts: str = _env(
+        "SUBSCRIPTION_IDENTITY_KNOWN_HOSTS", "/run/secrets/proxy_identity_known_hosts"
+    )
+    subscription_identity_targets: str = _env(
+        "SUBSCRIPTION_IDENTITY_TARGETS",
+        "tokyo=10.5.11.92,singapore=luomo@10.5.11.103,siliconvalley=10.5.11.207",
+    )
+    subscription_identity_sync_timeout_seconds: int = _int(
+        "SUBSCRIPTION_IDENTITY_SYNC_TIMEOUT_SECONDS", 30
+    )
+    subscription_identity_attestation_max_age_seconds: int = _int(
+        "SUBSCRIPTION_IDENTITY_ATTESTATION_MAX_AGE_SECONDS", 150
+    )
 
     max_upload_bytes: int = _int("MAX_UPLOAD_BYTES", 524288000)
     max_image_bytes: int = _int("MAX_IMAGE_BYTES", 52428800)
+    image_max_pixels: int = _int("IMAGE_MAX_PIXELS", 40000000)
+    image_max_dimension: int = _int("IMAGE_MAX_DIMENSION", 16384)
+    image_max_frames: int = _int("IMAGE_MAX_FRAMES", 200)
+    image_max_decoded_pixels: int = _int("IMAGE_MAX_DECODED_PIXELS", 100000000)
+    image_cache_max_bytes: int = _int("IMAGE_CACHE_MAX_BYTES", 268435456)
+    private_media_max_capacity_bytes: int = _int("PRIVATE_MEDIA_MAX_CAPACITY_BYTES", 536870912)
+    media_disk_reserve_bytes: int = _int("MEDIA_DISK_RESERVE_BYTES", 536870912)
     max_temp_bytes: int = _int("MAX_TEMP_BYTES", 209715200)
     allow_anonymous_upload: bool = _bool("ALLOW_ANONYMOUS_UPLOAD", True)
     anonymous_max_upload_bytes: int = _int("ANONYMOUS_MAX_UPLOAD_BYTES", 10485760)

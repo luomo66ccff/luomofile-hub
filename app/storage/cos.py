@@ -28,7 +28,7 @@ class CosBackend(StorageBackend):
 
     def _path(self, object_key: str) -> Path:
         target = (self.mount_path / object_key).resolve()
-        if not str(target).startswith(str(self.mount_path.resolve())):
+        if not target.is_relative_to(self.mount_path.resolve()):
             raise ValueError("Invalid object key")
         return target
 
@@ -46,14 +46,20 @@ class CosBackend(StorageBackend):
     def delete_file(self, object_key: str) -> None:
         if self.use_mount:
             path = self._path(object_key)
-            if path.exists():
-                path.unlink()
+            path.unlink(missing_ok=True)
             return
         if self.client and settings.cos_bucket:
             self.client.delete_object(Bucket=settings.cos_bucket, Key=object_key)
 
     def get_public_url(self, object_key: str) -> str | None:
         return f"{self.public_base_url}/{object_key}" if self.public_base_url else None
+
+    def open_reader(self, object_key: str):
+        if self.use_mount:
+            return self._path(object_key).open("rb")
+        if not self.client or not settings.cos_bucket:
+            raise RuntimeError("COS backend is not configured for private reads")
+        return self.client.get_object(Bucket=settings.cos_bucket, Key=object_key)["Body"]
 
     def exists(self, object_key: str) -> bool:
         if self.use_mount:

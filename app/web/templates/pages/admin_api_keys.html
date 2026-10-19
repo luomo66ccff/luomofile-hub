@@ -1,0 +1,59 @@
+{% extends "layouts/admin.html" %}
+{% from "macros/ui.html" import notice %}
+{% block title %}API 密钥 · LuomoFile{% endblock %}
+{% block content %}
+<section class="page-head">
+<div class="titles">
+<p class="berth">Administration / API access</p>
+<h1>API 密钥</h1>
+<p>为用户签发范围明确的密钥。完整密钥只在创建成功时显示一次。</p>
+</div>
+<a class="btn " href="/developer/docs">权限与 API 文档</a>
+</section>{{ notice(message, error) }}
+{% if created_key %}<section class="panel secret-once" role="alert">
+<p class="berth">Shown once</p>
+<h2>请现在保存完整密钥</h2>
+<p class="muted">离开此页面后无法再次查看。将密钥保存在服务端环境中。</p>
+<code id="created-api-key">{{ created_key }}</code>
+<div class="btn-row">
+<button class="btn btn-primary" type="button" data-copy-target="created-api-key">复制密钥</button>
+</div>
+</section>{% endif %}
+<section class="panel">
+<h2>创建密钥</h2>
+<form class="form-grid" method="post" action="/admin/api-keys/create">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<label class="field">所属用户<select name="user_id">{% for u in users %}<option value="{{ u.id }}">{{ u.username }}</option>{% endfor %}</select>
+</label>
+<label class="field">密钥名称<input name="name" value="default" required>
+</label>
+<label class="field full">权限范围<input name="scopes" value="files:upload,files:read,files:delete,files:list,temp:upload,images:upload">
+<small>使用逗号分隔 scope。按实际用途填写，不会自动增加其他权限。</small>
+</label>
+<button class="btn btn-primary full" type="submit">创建 API 密钥</button>
+</form>
+</section>
+<section class="panel">
+<h2>已签发密钥</h2>{% for k in keys %}<article class="key-entry">
+<div class="key-entry-head">
+<div>
+<strong>{{ k.name }}</strong>
+<p class="muted small">{{ k.username }} · <code>{{ k.key_prefix }}…</code>
+</p>
+</div>
+<span class="badge" data-tone="{{ 'ok' if k.status == 'active' else '' }}">{{ status_label(k.status) }}</span>
+</div>{% if k.scopes %}<p class="small">
+<span class="muted">权限：</span>
+<code>{{ k.scopes }}</code>
+</p>{% endif %}
+{% if k.status == 'active' %}<details>
+<summary>吊销此密钥</summary>
+<form method="post" action="/admin/api-keys/{{ k.id }}/revoke" data-confirm="确认吊销此 API 密钥？使用它的服务将无法继续访问。">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<p class="muted small">使用这枚密钥的服务会停止获得授权。</p>
+<button class="btn btn-danger btn-sm" type="submit">确认吊销</button>
+</form>
+</details>{% endif %}</article>{% else %}<div class="empty">
+<h2>暂未签发 API 密钥</h2>
+<p>创建后将显示名称、前缀与状态，完整密钥不会在列表中出现。</p>
+</div>{% endfor %}</section>{% endblock %}

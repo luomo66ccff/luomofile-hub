@@ -1,0 +1,118 @@
+{% extends "layouts/admin.html" %}
+{% block title %}订阅管理 · LuomoFile{% endblock %}
+
+
+
+{% macro display_time(value, empty='尚无记录') -%}
+{% if value %}<time datetime="{{ value }}" data-subscription-time>{{ human_date(value) }}</time>{% else %}{{ empty }}{% endif %}
+{%- endmacro %}
+
+{% macro link_list(links, formats, selected_format) %}
+{% for link in links %}
+<article class="subscription-card" data-subscription-link="{{ link.id }}" data-link-status="{{ link.display_status }}" data-link-label="{{ link.label }}">
+  <header class="subscription-card-head">
+    <div><strong>{{ link.label }}</strong><p class="sub-muted">{{ link.original_filename }} · <span class="sub-mono">{{ link.token_prefix }}…</span></p></div>
+    <span class="badge" data-tone="{{ 'ok' if link.display_status == 'active' else 'danger' if link.display_status == 'provision_failed' else 'private' }}">{{ link.status_label }}</span>
+  </header>
+  {% if link.url %}
+  <div class="subscription-client" data-client-picker>
+    <form method="get" action="/admin/subscriptions" class="subscription-format-form" data-format-form>
+      <label class="field" for="sub-format-{{ link.id }}">客户端格式
+        <select id="sub-format-{{ link.id }}" name="format" data-subscription-format>
+          {% for key, item in formats.items() %}<option value="{{ key }}" data-description="{{ item.description }}" {{ 'selected' if key == selected_format else '' }}>{{ item.label }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="btn " type="submit" data-format-apply>应用格式</button>
+    </form>
+    <label class="subscription-url-label" for="sub-url-{{ link.id }}">订阅链接</label>
+    <div class="subscription-link-copy">
+      <input id="sub-url-{{ link.id }}" type="text" readonly value="{{ link.url }}{{ '?format=' ~ selected_format if selected_format != 'mihomo' else '' }}" data-subscription-url data-base-url="{{ link.url }}" aria-label="{{ link.label }} 的订阅链接" autocomplete="off" spellcheck="false">
+      <button class="btn btn-primary" type="button" data-subscription-copy>复制链接</button>
+    </div>
+    <p class="sub-format-description" data-format-description>{{ formats[selected_format].description }}</p>
+    <span class="sub-copy-feedback" role="status" aria-live="polite" data-copy-feedback></span>
+  </div>
+  {% elif link.display_status == 'queued' %}
+    <p class="subscription-state-message">请求已排队，尚未生成可用链接。轮到此请求后会开始同步节点。</p>
+  {% elif link.display_status == 'processing' %}
+    <p class="subscription-state-message">正在同步节点凭据；所有地区确认后，才会显示可复制的链接。</p>
+  {% elif link.display_status == 'provision_failed' %}
+    <p class="subscription-state-message error">节点同步失败，未签发可用链接。可在创建区开始新的请求。</p>
+  {% elif link.display_status == 'active' %}
+    <p class="subscription-state-message error">此链接的保存副本无法显示，请重新签发。</p>
+  {% elif link.display_status in ['revoke_pending', 'expired_pending'] %}
+    <p class="subscription-state-message">链接已关闭；节点凭据清理会继续重试。</p>
+  {% else %}
+    <p class="subscription-state-message">此链接已关闭，无法继续获取订阅。</p>
+  {% endif %}
+  <dl class="subscription-meta">
+    <div><dt>有效期至</dt><dd>{{ display_time(link.expires_at, '不过期') }}</dd></div>
+    <div><dt>获取次数</dt><dd>{{ link.use_count }} 次</dd></div>
+    <div><dt>最近使用</dt><dd>{{ display_time(link.last_used_at, '从未使用') }}</dd></div>
+    <div><dt>节点确认</dt><dd>{{ display_time(link.identity_synced_at, '尚未完成') }}{% if link.sync_error %}<span class="sub-muted"> · 需要重试</span>{% endif %}</dd></div>
+  </dl>
+  {% if link.display_status == 'active' %}
+  <details class="subscription-revoke" data-revoke-confirmation>
+    <summary>吊销链接</summary>
+    <form method="post" action="/admin/subscriptions/{{ link.id }}/revoke" data-subscription-action data-confirm="确认吊销此订阅？授权将立即关闭。">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <p>确认吊销「{{ link.label }}」？链接会立即关闭，已保存的副本和节点凭据也会清理。</p>
+      <div class="sub-actions"><button class="btn btn-danger" type="submit">确认吊销</button><button class="btn " type="button" data-revoke-cancel hidden>取消</button></div>
+    </form>
+  </details>
+  {% endif %}
+</article>
+{% else %}
+<div class="empty"><div class="empty-mark" aria-hidden="true">URL</div><h2>还没有订阅链接</h2><p>填写上方表单，节点同步完成后即可复制链接。</p></div>
+{% endfor %}
+{% endmacro %}
+
+{% block content %}
+<div class="subscription-manager" data-subscription-manager>
+  <section class="page-head"><div><p class="berth">Administration / subscription studio</p><h1>订阅管理</h1><p>每位接收方一个独立授权。创建、节点同步、客户端格式与吊销，在同一处完成。</p></div><a class="btn " href="/admin">返回控制台</a></section>
+  <div class="subscription-overview" aria-label="订阅概况">
+    <div><span>可用链接</span><strong data-sub-count="active">{{ counts.active }}</strong></div>
+    <div><span>正在创建</span><strong data-sub-count="pending">{{ counts.pending }}</strong></div>
+    <div><span>创建失败</span><strong data-sub-count="failed">{{ counts.failed }}</strong></div>
+    <div><span>全部记录</span><strong data-sub-count="total">{{ counts.total }}</strong></div>
+  </div>
+
+  <div class="subscription-workspace"><div class="subscription-authoring"><section class="panel subscription-create-panel" aria-labelledby="sub-create-heading">
+    <div class="subscription-section-head"><div><p class="berth">01 / 创建</p><h2 id="sub-create-heading">创建订阅链接</h2><p class="sub-muted">提交后先同步节点，完成后再交付链接。</p></div><a class="sub-text-link" href="#subscription-links-heading">查看链接管理 ↓</a></div>
+    <form method="post" action="/admin/subscriptions/create" autocomplete="off" data-subscription-manager-form>
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="idempotency_key" value="{{ subscription_create_id }}">
+      <div class="subscription-create-fields">
+        <label class="subscription-file-field" for="sub-file">订阅文件
+          <select id="sub-file" name="file_id" required {% if not subscription_files %}disabled{% endif %}>
+            {% for file in subscription_files %}<option value="{{ file.file_id }}" data-file-name="{{ file.original_filename }}" data-file-storage="{{ {'local_temp': '本地存储', 'cos': '对象存储', 'cos_sv': '对象存储副本', 'r2': 'R2 存储'}.get(file.storage_backend, '存储') }}" data-file-updated="{{ file.updated_at or '' }}" {{ 'selected' if form_values.get('file_id') == file.file_id else '' }}>{{ file.original_filename }} · {{ {'local_temp': '本地存储', 'cos': '对象存储', 'cos_sv': '对象存储副本', 'r2': 'R2 存储'}.get(file.storage_backend, '存储') }}{% if file.updated_at %} · {{ human_date(file.updated_at) }} 更新{% endif %}</option>{% endfor %}
+          </select>
+          <small class="sub-muted">{{ '选择作为内容来源的订阅配置。' if subscription_files else '暂无订阅文件，请先上传 subscription.yml 或 subscription.yaml。' }}</small>
+        </label>
+        <label class="field" for="sub-label">接收方标签<input id="sub-label" name="label" maxlength="80" placeholder="例如：Alice 的手机" value="{{ form_values.get('label', '') }}" required><small class="sub-muted">便于识别链接用途和接收方。</small></label>
+        <label class="field" for="sub-expiry">有效期（天）<input id="sub-expiry" name="expires_in_days" type="number" min="0" max="3650" value="{{ form_values.get('expires_in_days', 30) }}" required><small class="sub-muted">0 表示不过期，默认 30 天。</small></label>
+      </div>
+      <div class="subscription-create-actions"><button class="btn btn-primary" type="submit" data-create-submit {% if not subscription_files %}disabled{% endif %}>创建受保护链接</button><button class="btn " type="button" data-create-next hidden>创建下一条</button><span class="sub-muted">每次请求只签发一条链接。</span></div>
+    </form>
+    <div class="subscription-feedback {{ 'is-error' if error else 'is-success' if notice else '' }}" {% if not error and not notice %}hidden{% endif %} role="status" aria-live="polite" tabindex="-1" data-subscription-feedback>{{ error or notice }}</div>
+  </section>
+
+  <section class="subscription-progress" aria-label="02 / 创建进度">
+    <div><p class="berth">02 / 进度</p><strong data-task-heading>{{ '有请求正在创建' if counts.pending else '提交后在这里查看进度' }}</strong><p data-task-message>{{ '请求可能处于排队或节点同步阶段；详情见下方列表。' if counts.pending else '完成节点同步后，链接列表会显示可复制的订阅。' }}</p><small data-subscription-refresh-status>可使用下方「刷新状态」查看最新结果。</small></div>
+    <div class="subscription-node-state"><span class="badge" data-tone="{{ 'ok' if node_health.fresh else 'private' }}" data-node-badge>{{ '节点已确认' if node_health.fresh else '节点状态待更新' }}</span><p><span data-node-targets>{{ node_health.target_count }}</span> 个地区 · <span data-node-identities>{{ node_health.identity_count }}</span> 个活动身份</p><small>最近确认：<span data-node-success>{{ display_time(node_health.last_success_at) }}</span></small></div>
+  </section>
+
+  </div><section class="panel subscription-management-panel" aria-labelledby="subscription-links-heading">
+    <div class="subscription-section-head"><div><p class="berth">03 / 管理</p><h2 id="subscription-links-heading">订阅链接</h2><p class="sub-muted">不同格式共用同一授权，更新、到期和吊销同时生效。</p></div><div class="sub-actions"><a class="btn " href="/admin/subscriptions" data-subscription-refresh>刷新状态</a><form method="post" action="/admin/subscriptions/reconcile" data-subscription-action>
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn " type="submit">同步节点</button></form></div></div>
+    <div class="subscription-filters" data-subscription-filters hidden>
+      <label class="field" for="sub-search">查找接收方<input id="sub-search" type="search" placeholder="搜索标签…" data-subscription-search></label>
+      <label class="field" for="sub-status-filter">状态<select id="sub-status-filter" data-subscription-status-filter><option value="all">全部状态</option><option value="active">可用</option><option value="pending">正在创建</option><option value="provision_failed">创建失败</option><option value="closed">已关闭</option></select></label>
+      <p class="sub-muted" role="status" data-filter-count></p>
+    </div>
+    <div class="section-title subscription-list-title"><p class="sub-muted">按接收方整理的授权记录</p></div><div class="subscription-list" data-subscription-results>{{ link_list(links, subscription_formats, selected_format) }}</div>
+    <p class="subscription-no-match" data-subscription-no-match hidden>没有匹配的链接，试试其他标签或状态。</p>
+    <noscript><p class="sub-muted">选择客户端格式后点击「应用格式」。创建进度可点击「刷新状态」查看；链接可手动选择后复制。</p></noscript>
+  </section></div>
+</div>
+{% endblock %}

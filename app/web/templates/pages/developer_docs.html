@@ -1,0 +1,87 @@
+{% extends "layouts/base.html" %}
+{% block title %}API 文档 · LuomoFile{% endblock %}
+{% block content %}
+<section class="page-head">
+<div class="titles">
+<p class="berth">API reference</p>
+<h1>文件 API 文档</h1>
+<p>当前账户已登录。示例中的 lfk_xxx 与 lf_xxx 都是占位符。</p>
+</div>
+<a class="btn " href="/developer">开发者入口</a>
+</section>
+<div class="docs-layout">
+<nav class="docs-toc" aria-label="文档目录">
+<a href="#api-auth">认证与分享</a>
+<a href="#api-upload">上传文件</a>
+<a href="#api-list">文件列表</a>
+<a href="#api-detail">文件详情</a>
+<a href="#api-generate">开启直链</a>
+<a href="#api-revoke">吊销直链</a>
+<a href="#api-delete">删除文件</a>
+<a href="#api-storage">存储统计</a>
+<a href="#api-albums">相册接口</a>
+</nav>
+<div class="docs-content">
+<section class="panel" id="api-albums">
+<p class="berth">Albums</p><h2>相册与共建</h2>
+<p>相册接口使用本站登录会话。写入请求需要同源 Origin，且账户已验证邮箱；现有 API Key 不会自动获得相册权限。</p>
+<div class="table"><div class="row"><span class="endpoint"><span class="method" data-m="GET">GET</span><code>/api/albums?scope=public</code></span><span>公开发现；mine / joined 需要登录。</span></div><div class="row"><span class="endpoint"><span class="method" data-m="POST">POST</span><code>/api/albums</code></span><span>创建个人或共建相册。</span></div><div class="row"><span class="endpoint"><span class="method" data-m="POST">POST</span><code>/api/albums/{id}/items</code></span><span>加入自己拥有的图片，显式确认展示授权。</span></div><div class="row"><span class="endpoint"><span class="method" data-m="PATCH">PATCH</span><code>/api/albums/{id}/items/{file_id}</code></span><span>说明、排序、审核或本人展示授权，逐项检查权限。</span></div><div class="row"><span class="endpoint"><span class="method" data-m="POST">POST</span><code>/api/albums/{id}/invitations</code></span><span>由创建者邀请已有账户，对方接受后生效。</span></div></div>
+<pre class="code"><code>{"title":"一起记录风景","kind":"shared","view_policy":"restricted","contribute_policy":"restricted","listed":false,"review_required":true}</code></pre>
+<p>图片可以加入多个相册，原图仍属于上传者。相册公开、原图下载和图床直链分别授权；移出或删除相册不会删除原图。图片上传的 auto 策略使用私有图片存储，直链仍需主动生成。</p>
+</section>
+<section class="panel" id="api-auth">
+<h2>认证与分享</h2>
+<p>将 API 密钥通过 <code>Authorization: Bearer lfk_xxx</code> 请求头发送。密钥范围由签发时的 scope 决定，完整密钥仅显示一次。</p>
+<p class="muted">原文件直链与相册授权独立。上传默认不产生公开直链；相册不会自动包含旧文件。</p>
+</section>
+<section class="panel" id="api-upload">
+<div class="endpoint"><span class="method" data-m="POST">POST</span><code>/api/v1/files/upload</code></div>
+<h2>上传文件</h2>
+<p class="muted">以 multipart/form-data 发送文件，用 purpose 归类用途，用 generate_link 明确控制是否开启直链。</p>
+<pre class="code">curl -H "Authorization: Bearer lfk_xxx" \
+  -F "file=@example.png" \
+  -F "purpose=image" \
+  -F "generate_link=false" \
+  {{ base_url }}/api/v1/files/upload</pre>
+</section>
+<section class="panel" id="api-list">
+<div class="endpoint"><span class="method" data-m="GET">GET</span><code>/api/v1/files</code></div>
+<h2>文件列表</h2>
+<pre class="code">curl -H "Authorization: Bearer lfk_xxx" \
+  {{ base_url }}/api/v1/files</pre>
+</section>
+<section class="panel" id="api-detail">
+<div class="endpoint"><span class="method" data-m="GET">GET</span><code>/api/v1/files/{file_id}</code></div>
+<h2>文件详情</h2>
+<pre class="code">curl -H "Authorization: Bearer lfk_xxx" \
+  {{ base_url }}/api/v1/files/lf_xxx</pre>
+</section>
+<section class="panel" id="api-generate">
+<div class="endpoint"><span class="method" data-m="POST">POST</span><code>/api/v1/files/{file_id}/link/generate</code></div>
+<h2>开启公开直链</h2>
+<p class="muted">开启后，持有直链的人可以读取原始文件。私有文件不能开启直链。</p>
+<pre class="code">curl -X POST -H "Authorization: Bearer lfk_xxx" \
+  {{ base_url }}/api/v1/files/lf_xxx/link/generate</pre>
+</section>
+<section class="panel" id="api-revoke">
+<div class="endpoint"><span class="method" data-m="POST">POST</span><code>/api/v1/files/{file_id}/link/revoke</code></div>
+<h2>吊销直链</h2>
+<p class="muted">原地址会停止访问。相册展示仍按独立授权判断。</p>
+<pre class="code">curl -X POST -H "Authorization: Bearer lfk_xxx" \
+  {{ base_url }}/api/v1/files/lf_xxx/link/revoke</pre>
+</section>
+<section class="panel" id="api-delete">
+<div class="endpoint"><span class="method" data-m="DELETE">DELETE</span><code>/api/v1/files/{file_id}</code></div>
+<h2>删除原始文件</h2>
+<p class="muted">所有相册关联与图床直链同时失效。</p>
+<pre class="code">curl -X DELETE -H "Authorization: Bearer lfk_xxx" \
+  {{ base_url }}/api/v1/files/lf_xxx</pre>
+</section>
+<section class="panel" id="api-storage">
+<div class="endpoint"><span class="method" data-m="GET">GET</span><code>/api/v1/storage/stats</code></div>
+<h2>存储统计</h2>
+<pre class="code">curl -H "Authorization: Bearer lfk_xxx" \
+  {{ base_url }}/api/v1/storage/stats</pre>
+</section>
+</div>
+</div>{% endblock %}

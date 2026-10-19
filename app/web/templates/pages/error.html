@@ -1,0 +1,12 @@
+{% extends "layouts/base.html" %}
+{% block title %}{{ title }} · LuomoFile{% endblock %}
+{% block content %}
+<section class="empty error-page">
+<p class="berth">LuomoFile / {{ status_code }}</p>
+<div class="empty-mark" aria-hidden="true">◌</div>
+<h1>{{ title }}</h1>
+<p class="error-message">{{ message }}</p>
+<div class="btn-row">
+<a class="btn btn-primary" href="{{ return_to or '/gallery' }}">{{ return_label or '返回相册广场' }}</a>{% if not user %}<a class="btn " href="/login">登录账户</a>{% endif %}</div>
+</section>
+{% endblock %}

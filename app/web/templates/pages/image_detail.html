@@ -1,0 +1,107 @@
+{% extends "layouts/base.html" %}
+{% from "macros/ui.html" import notice, lightbox, policy_label %}
+{% block title %}{{ file.original_filename }} · 我的图片 · LuomoFile{% endblock %}
+{% block content %}
+<nav class="crumbs">
+<a href="/images">我的图片</a>
+<span aria-hidden="true">/</span>
+<span>{{ file.original_filename }}</span>
+</nav>
+<section class="page-head">
+<div class="titles">
+<p class="berth">One original, many stories</p>
+<h1 class="user-content">{{ file.original_filename }}</h1>
+<p>{{ human_size(file.size_bytes) }} · {{ human_date(file.uploaded_at) }}{% if file.width and file.height %} · {{ file.width }} × {{ file.height }}{% endif %}</p>
+</div>
+<a class="btn " href="/files/{{ file.file_id }}">文件详情</a>
+</section>{{ notice(message, error) }}
+<section class="detail-layout">
+<a class="image-preview" href="{{ file.preview_url }}" data-lightbox-item data-preview="{{ file.preview_url }}" data-title="{{ file.original_filename }}" data-caption="{{ file.original_filename }}">{% if file.preview_url %}<img src="{{ file.preview_url }}" alt="{{ file.original_filename }}" decoding="async" data-media-image>{% else %}<span class="media-placeholder">预览暂不可用</span>{% endif %}</a>
+<article class="panel">
+<p class="berth">Image hosting</p>
+<h2>图床直链</h2>
+<p class="muted">原图直链独立于相册权限。开启后，拿到链接的人可读取原始文件。</p>
+<dl class="kv">
+<div>
+<dt>原文件可见性</dt>
+<dd>{{ visibility_label(file.visibility) }}</dd>
+</div>
+<div>
+<dt>直链状态</dt>
+<dd>
+<span class="badge" data-tone="{{ 'ok' if file.link_enabled else '' }}">{{ '已开启' if file.link_enabled else '未开启' }}</span>
+</dd>
+</div>
+<div>
+<dt>地址</dt>
+<dd>{% if file.link_enabled and file.public_url %}<code id="direct-url">{{ file.public_url }}</code>{% else %}暂无公开直链{% endif %}</dd>
+</div>
+</dl>
+<div class="btn-row">{% if file.link_enabled and file.public_url %}<button class="btn " type="button" data-copy-target="direct-url">复制 URL</button>
+<button class="btn " type="button" data-copy="![image]({{ file.public_url }})">复制 Markdown</button>
+<button class="btn btn-ghost" type="button" data-copy='&lt;img src="{{ file.public_url }}" alt="image"&gt;'>HTML</button>
+<button class="btn btn-ghost" type="button" data-copy="[img]{{ file.public_url }}[/img]">BBCode</button>
+<form method="post" action="/files/{{ file.file_id }}/link/revoke" data-confirm="确认吊销公开直链？使用原地址的网页和分享将失效，相册展示不受此开关控制。">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<input type="hidden" name="return_to" value="{{ request.url.path }}">
+<button class="btn btn-danger" type="submit">吊销直链</button>
+</form>{% elif file.visibility != 'private' %}<form method="post" action="/files/{{ file.file_id }}/link/generate">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<input type="hidden" name="return_to" value="{{ request.url.path }}">
+<button class="btn btn-primary" type="submit">开启公开直链</button>
+</form>{% else %}<p class="muted small">私有文件不支持公开直链；仍可按单独授权加入相册。</p>{% endif %}</div>
+</article>
+</section>
+<div class="section-title">
+<div>
+<p class="berth">Album contributions</p>
+<h2>这张照片参与的故事</h2>
+</div>
+</div>
+<section class="panel">{% for c in contributions %}<article class="row">
+<div class="row-main">
+<strong>{{ c.title }}</strong>
+<p class="muted small">{{ status_label(c.status) }} · 最大授权范围：{{ policy_label(c.audience_cap) }}</p>{% if c.can_withdraw %}<details>
+<summary>调整我的授权</summary>
+<form class="form-grid" method="post" action="/albums/{{ c.album_id }}/items/{{ file.file_id }}/consent">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<label class="field">最大浏览范围<select name="audience_cap">{% for v,label in [('restricted','仅受邀成员'),('authenticated','已激活账户'),('public','所有人')] %}<option value="{{ v }}" {{ 'selected' if c.audience_cap == v else '' }}>{{ label }}</option>{% endfor %}</select>
+</label>
+<label class="switch">
+<input type="checkbox" name="allow_original" value="1" {{ 'checked' if c.allow_original else '' }}>
+<span>
+<strong>允许查看原图</strong>
+<small>原图可能含 GPS 等信息。</small>
+</span>
+</label>
+<button class="btn  full" type="submit">保存授权</button>
+</form>
+</details>{% endif %}</div>{% if c.can_withdraw %}<form method="post" action="/albums/{{ c.album_id }}/items/{{ file.file_id }}/remove" data-confirm="从这个相册撤回照片？你的原始文件仍保留。">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<button class="btn btn-danger btn-sm" type="submit">撤回贡献</button>
+</form>{% endif %}</article>{% else %}<p class="muted">这张照片尚未加入相册。</p>{% endfor %}</section>
+{% if albums %}<section class="panel">
+<h2>加入一本相册</h2>
+<form class="form-grid" method="post" action="/images/album">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<input type="hidden" name="file_ids" value="{{ file.file_id }}">
+<label class="field">目标相册<select name="album_id" required>{% for a in albums %}<option value="{{ a.album_id }}">{{ a.title }}</option>{% endfor %}</select>
+</label>
+<label class="field">最大浏览范围<select name="audience_cap">
+<option value="restricted">仅受邀成员</option>
+<option value="authenticated">已激活账户</option>
+<option value="public">所有人</option>
+</select>
+</label>
+<label class="switch full">
+<input type="checkbox" name="allow_original" value="1">
+<span>允许相册读者查看原图（可能包含拍摄位置信息）</span>
+</label>
+<label class="switch full">
+<input type="checkbox" name="consent" value="1" required>
+<span>确认加入此相册，并同意所选范围。不会改变图床直链状态。</span>
+</label>
+<button class="btn btn-primary full" type="submit">加入相册</button>
+</form>
+</section>{% else %}<a class="btn " href="/albums/new">创建相册来收藏它</a>{% endif %}
+{{ lightbox() }}{% endblock %}

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import BinaryIO
 
 
 @dataclass
@@ -11,10 +12,11 @@ class BackendInfo:
     public_base_url: str | None
     max_capacity_bytes: int
     used_bytes_cache: int
+    reserved_bytes: int = 0
 
     @property
     def available_bytes(self) -> int:
-        return max(0, int(self.max_capacity_bytes or 0) - int(self.used_bytes_cache or 0))
+        return max(0, int(self.max_capacity_bytes or 0) - int(self.used_bytes_cache or 0) - int(self.reserved_bytes or 0))
 
 
 class StorageBackend:
@@ -27,6 +29,10 @@ class StorageBackend:
         raise NotImplementedError
 
     def get_public_url(self, object_key: str) -> str | None:
+        raise NotImplementedError
+
+    def open_reader(self, object_key: str) -> BinaryIO:
+        """Read with server-side credentials, never through a public URL."""
         raise NotImplementedError
 
     def exists(self, object_key: str) -> bool:

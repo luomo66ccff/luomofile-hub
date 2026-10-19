@@ -10,7 +10,7 @@ def main() -> None:
         home = client.get(f"{BASE}/")
         assert home.status_code == 200
         text = home.text
-        assert "LuomoFile Hub" in text
+        assert "LuomoFile" in text and "文件星港" in text
         assert "Storage Backends" not in text
         assert "Recent Files" not in text
         assert "Active Files" not in text
@@ -20,18 +20,18 @@ def main() -> None:
         assert ">Temp<" not in text
         assert ">Images<" not in text
         assert ">Admin<" not in text
-        assert ">Login<" in text
-        assert ">Register<" in text
+        assert ">登录<" in text
+        assert ">注册<" in text
 
         upload = client.get(f"{BASE}/upload")
         assert upload.status_code == 200
         assert 'id="upload-form"' not in upload.text
-        assert "Sign in required" in upload.text
+        assert "登录后开始上传" in upload.text
 
         temp = client.get(f"{BASE}/temp")
         assert temp.status_code == 200
         assert 'id="upload-form"' not in temp.text
-        assert "Sign in required" in temp.text
+        assert "登录后开始上传" in temp.text
     print("public pages smoke ok")
 
 

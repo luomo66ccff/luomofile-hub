@@ -1,0 +1,45 @@
+{% extends "layouts/admin.html" %}
+{% from "macros/ui.html" import notice %}
+{% block title %}站点文件管理 · LuomoFile{% endblock %}
+{% block content %}
+<section class="page-head">
+<div class="titles">
+<p class="berth">Administration / files</p>
+<h1>站点文件管理</h1>
+<p>找到 {{ total }} 个活动文件。原图删除会使所有相册关联立即停止展示。</p>
+</div>
+<a class="btn btn-primary" href="/upload">上传文件</a>
+</section>{{ notice(message, error) }}
+<section class="panel compact-filter">
+<form id="admin-filter-form" method="get" action="/admin/files">
+<div class="filter-main">
+<label class="field">查找文件<input type="search" name="q" value="{{ q }}" placeholder="文件名、备注、对象键或 ID">
+</label>
+<button class="btn " type="submit">筛选</button>
+</div>
+<details>
+<summary>类型、范围与排序</summary>
+<div class="form-grid">
+<label class="field">文件类型<select name="type">
+<option value="">全部类型</option>{% for v,label in [('image','图片'),('document','文档'),('archive','压缩包'),('audio','音频'),('video','视频'),('code','代码'),('other','其他')] %}<option value="{{ v }}" {{ 'selected' if type == v else '' }}>{{ label }}</option>{% endfor %}</select>
+</label>
+<label class="field">原文件可见性<select name="visibility">
+<option value="">全部</option>{% for v in ['public','unlisted','private'] %}<option value="{{ v }}" {{ 'selected' if visibility == v else '' }}>{{ visibility_label(v) }}</option>{% endfor %}</select>
+</label>
+<label class="field">时间<select name="time">
+<option value="">全部时间</option>{% for v,label in [('today','今天'),('7d','最近 7 天'),('30d','最近 30 天')] %}<option value="{{ v }}" {{ 'selected' if time == v else '' }}>{{ label }}</option>{% endfor %}</select>
+</label>
+<label class="field">文件大小<select name="size">
+<option value="">任意大小</option>{% for v,label in [('small','小于 1 MB'),('medium','1–10 MB'),('large','大于 10 MB')] %}<option value="{{ v }}" {{ 'selected' if size == v else '' }}>{{ label }}</option>{% endfor %}</select>
+</label>
+<label class="field">排序<select name="sort">{% for v,label in [('created_desc','最新优先'),('created_asc','最早优先'),('size_desc','最大优先'),('size_asc','最小优先'),('name_asc','名称 A–Z')] %}<option value="{{ v }}" {{ 'selected' if sort == v else '' }}>{{ label }}</option>{% endfor %}</select>
+</label>
+<label class="field">每页<select name="page_size">{% for v in [50,100,200] %}<option value="{{ v }}" {{ 'selected' if page_size == v else '' }}>{{ v }} 项</option>{% endfor %}</select>
+</label>
+</div>
+</details>
+</form>
+</section>
+<div class="ledger-wrap"><table class="ledger"><thead><tr><th>名称</th><th>大小</th><th>类型</th><th>原文件范围</th><th>上传者</th><th>上传时间</th><th>直链</th><th>操作</th></tr></thead><tbody>{% for f in files %}<tr>
+<td><div class="name-cell"><a href="/admin/files/{{ f.file_id }}">{{ f.original_filename }}</a></div></td><td data-label="大小" class="num">{{ human_size(f.size_bytes) }}</td><td data-label="类型">{{ (f.mime_type or '?').split('/')[-1] }}</td><td data-label="范围"><span class="badge">{{ visibility_label(f.visibility) }}</span></td><td data-label="上传者">{{ f.owner_username or '—' }}</td><td data-label="上传时间" class="faint">{{ human_date(f.uploaded_at) }}</td><td data-label="直链"><span class="badge" data-tone="{{ 'link' if f.link_enabled else 'private' }}">{{ '直链开启' if f.link_enabled else '未开启' }}</span></td><td><div class="btn-row row-actions"><a class="btn btn-ghost btn-sm" href="/admin/files/{{ f.file_id }}">详情</a>{% if f.link_enabled and f.public_url %}<button class="btn btn-sm" type="button" data-copy="{{ f.public_url }}">复制</button>{% endif %}<form method="post" action="/admin/files/{{ f.file_id }}/delete" data-confirm="确认删除这个原始文件？所有相册关联和直链会立即失效。"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-danger btn-sm" type="submit">删除</button></form></div></td></tr>{% else %}<tr><td colspan="8"><div class="empty"><h3>没有匹配的文件</h3><p>试试更少的筛选条件。</p><a class="btn" href="/admin/files">重置筛选</a></div></td></tr>{% endfor %}</tbody></table></div>
+<nav class="pager" aria-label="站点文件分页">{% if page > 1 %}<a class="btn " href="/admin/files?{{ request.url.include_query_params(page=page - 1).query }}">上一页</a>{% endif %}<span class="chip">第 {{ page }} / {{ total_pages }} 页</span>{% if page < total_pages %}<a class="btn " href="/admin/files?{{ request.url.include_query_params(page=page + 1).query }}">下一页</a>{% endif %}</nav>{% endblock %}
