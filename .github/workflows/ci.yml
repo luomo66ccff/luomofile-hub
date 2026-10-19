@@ -8,20 +8,48 @@ permissions:
 jobs:
   python:
     runs-on: ubuntu-latest
+    env:
+      PYTHONIOENCODING: utf-8
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: pip
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt -c requirements.lock
       - run: python -m compileall -q app scripts
       - run: python -c "from app.main import app; assert app.title"
-      - name: tests and smoke tests
+      - name: unit and subscription tests
         run: |
           set -e
-          for t in scripts/test_*.py scripts/smoke_test*.py; do
+          for t in scripts/test_*.py scripts/smoke_test_subscription_*.py; do
             echo "::group::$t"
             python "$t"
+            echo "::endgroup::"
+          done
+      - name: live HTTP smoke tests (isolated server)
+        env:
+          SMOKE_BASE_URL: http://127.0.0.1:18851
+          APP_BASE_URL: http://127.0.0.1:18851
+          APP_ENV: test
+          SESSION_SECRET: ci-smoke-session-secret-over-32-characters
+          PUBLIC_LINK_SECRET: ci-smoke-public-link-secret-over-32-characters
+          SUBSCRIPTION_TOKEN_ENCRYPTION_SECRET: ci-smoke-vault-secret-over-32-characters
+          SUBSCRIPTION_IDENTITY_SECRET: ci-smoke-identity-secret-over-32-characters
+          SUBSCRIPTION_IDENTITY_SYNC_ENABLED: 'false'
+          R2_ENABLED: 'false'
+          COS_ENABLED: 'false'
+          COS_SV_ENABLED: 'false'
+          LOCAL_TEMP_ENABLED: 'true'
+        run: |
+          set -e
+          export DATABASE_PATH="$RUNNER_TEMP/smoke.sqlite" LOCAL_TEMP_PATH="$RUNNER_TEMP/storage"
+          mkdir -p "$LOCAL_TEMP_PATH"
+          python -m uvicorn app.main:app --host 127.0.0.1 --port 18851 > "$RUNNER_TEMP/server.log" 2>&1 &
+          for i in $(seq 1 30); do curl -fsS "$SMOKE_BASE_URL/health" >/dev/null && break; sleep 1; done
+          curl -fsS "$SMOKE_BASE_URL/ready"
+          for t in smoke_test smoke_test_public_pages smoke_test_files_page smoke_test_link_policy smoke_test_upload_ui; do
+            echo "::group::$t"
+            python "scripts/$t.py" || { tail -50 "$RUNNER_TEMP/server.log"; exit 1; }
             echo "::endgroup::"
           done
